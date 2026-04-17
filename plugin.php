@@ -751,6 +751,7 @@ class pluginComments extends Plugin {
 
     public function getPagesWithComments(): array
     {
+        $allEntries = [];
         $result   = [];
         $base     = $this->commentsBasePath();
         $settings = $this->loadPageSettings();
@@ -765,7 +766,7 @@ class pluginComments extends Plugin {
                 if (!is_dir($fullPath)) {
                     continue;
                 }
-                $result[$entry] = [
+                $allEntries[$entry] = [
                     'key'      => $entry,
                     'title'    => $allPages[$entry]['title'] ?? $entry,
                     'pending'  => $this->loadComments($entry, 'pending'),
@@ -777,14 +778,21 @@ class pluginComments extends Plugin {
 
         // Ajouter les pages avec settings mais sans commentaires encore
         foreach ($settings as $key => $cfg) {
-            if (!isset($result[$key])) {
-                $result[$key] = [
+            if (!isset($allEntries[$key])) {
+                $allEntries[$key] = [
                     'key'      => $key,
                     'title'    => $allPages[$key]['title'] ?? $key,
                     'pending'  => [],
                     'approved' => [],
                     'enabled'  => (bool) ($cfg['enabled'] ?? false),
                 ];
+            }
+        }
+
+        // Onglet moderation: ne garder que les pages avec commentaires actives.
+        foreach ($allEntries as $key => $entry) {
+            if (!empty($entry['enabled'])) {
+                $result[$key] = $entry;
             }
         }
 
