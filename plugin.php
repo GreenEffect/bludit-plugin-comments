@@ -31,20 +31,56 @@ class pluginComments extends Plugin {
 
     private function currentLocale(): string
     {
-        $locale = '';
+        $candidates = [];
+
         if (defined('LANGUAGE')) {
-            $locale = (string) LANGUAGE;
-        } elseif (defined('LOCALE')) {
-            $locale = (string) LOCALE;
+            $candidates[] = (string) LANGUAGE;
+        }
+        if (defined('LOCALE')) {
+            $candidates[] = (string) LOCALE;
+        }
+        if (defined('LANG')) {
+            $candidates[] = (string) LANG;
         }
 
-        if ($locale === '') {
-            return 'en';
+        global $site;
+        if (isset($site) && is_object($site)) {
+            if (method_exists($site, 'language')) {
+                try {
+                    $candidates[] = (string) $site->language();
+                } catch (Throwable $e) {}
+            }
+            if (method_exists($site, 'getField')) {
+                try {
+                    $candidates[] = (string) $site->getField('language');
+                } catch (Throwable $e) {}
+            }
         }
 
-        $locale = strtolower($locale);
-        if (strpos($locale, 'fr') === 0) {
-            return 'fr_FR';
+        // Fallback robuste: lire la config site directement.
+        if (defined('PATH_DATABASES')) {
+            $siteDbFile = PATH_DATABASES . 'site.php';
+            if (file_exists($siteDbFile)) {
+                $raw = @file_get_contents($siteDbFile);
+                if (is_string($raw) && $raw !== '') {
+                    if (preg_match('/"language"\s*:\s*"([^"]+)"/i', $raw, $m)) {
+                        $candidates[] = (string) $m[1];
+                    }
+                }
+            }
+        }
+
+        foreach ($candidates as $candidate) {
+            $candidate = strtolower(trim((string) $candidate));
+            if ($candidate === '') {
+                continue;
+            }
+            if (strpos($candidate, 'fr') === 0) {
+                return 'fr_FR';
+            }
+            if (strpos($candidate, 'en') === 0) {
+                return 'en';
+            }
         }
 
         return 'en';
