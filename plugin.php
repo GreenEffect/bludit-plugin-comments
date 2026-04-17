@@ -12,6 +12,7 @@
 
 class pluginComments extends Plugin {
     private $frontCommentsRendered = false;
+    private $cachedTranslations = null;
 
     private function safeLength(string $value): int
     {
@@ -26,6 +27,66 @@ class pluginComments extends Plugin {
     private function safePos(string $haystack, string $needle)
     {
         return function_exists('mb_strpos') ? mb_strpos($haystack, $needle) : strpos($haystack, $needle);
+    }
+
+    private function currentLocale(): string
+    {
+        $locale = '';
+        if (defined('LANGUAGE')) {
+            $locale = (string) LANGUAGE;
+        } elseif (defined('LOCALE')) {
+            $locale = (string) LOCALE;
+        }
+
+        if ($locale === '') {
+            return 'en';
+        }
+
+        $locale = strtolower($locale);
+        if (strpos($locale, 'fr') === 0) {
+            return 'fr_FR';
+        }
+
+        return 'en';
+    }
+
+    private function loadTranslationsForLocale(string $locale): array
+    {
+        $file = __DIR__ . DS . 'languages' . DS . $locale . '.json';
+        if (!file_exists($file)) {
+            return [];
+        }
+        $json = json_decode((string) file_get_contents($file), true);
+        return is_array($json) ? $json : [];
+    }
+
+    private function translations(): array
+    {
+        if (is_array($this->cachedTranslations)) {
+            return $this->cachedTranslations;
+        }
+
+        $en = $this->loadTranslationsForLocale('en');
+        $locale = $this->currentLocale();
+        $localized = $locale === 'en' ? [] : $this->loadTranslationsForLocale($locale);
+
+        $base = isset($en['strings']) && is_array($en['strings']) ? $en['strings'] : [];
+        $extra = isset($localized['strings']) && is_array($localized['strings']) ? $localized['strings'] : [];
+
+        $this->cachedTranslations = array_merge($base, $extra);
+        return $this->cachedTranslations;
+    }
+
+    public function t(string $key, array $replace = []): string
+    {
+        $translations = $this->translations();
+        $message = isset($translations[$key]) ? (string) $translations[$key] : $key;
+
+        foreach ($replace as $k => $v) {
+            $message = str_replace('{' . $k . '}', (string) $v, $message);
+        }
+
+        return $message;
     }
 
     private function runtimeSettingsFile(): string
@@ -364,14 +425,14 @@ class pluginComments extends Plugin {
     private function processCommentSubmission(): void
     {
         if (!$this->validateAltchaPayload($_POST['altcha'] ?? '')) {
-            $this->setFlash('error', 'Verification anti-spam invalide. Merci de reessayer.');
+            $this->setFlash('error', $this->t('flash_altcha_invalid'));
             $this->redirectToPage();
             return;
         }
 
         // CSRF
         if (!$this->validateCsrf($_POST['csrf_token'] ?? '')) {
-            $this->setFlash('error', '⚠ Erreur de sécurité. Veuillez recharger la page et réessayer.');
+            $this->setFlash('error', $this->t('flash_csrf_error'));
             $this->redirectToPage();
             return;
         }
@@ -379,7 +440,7 @@ class pluginComments extends Plugin {
         $pageKey = $this->cleanKey($_POST['page_key'] ?? '');
 
         if (!$this->isCommentsEnabled($pageKey)) {
-            $this->setFlash('error', 'Les commentaires ne sont pas activés sur cette page.');
+            $this->setFlash('error', $this->t('flash_comments_disabled'));
             $this->redirectToPage();
             return;
         }
@@ -387,7 +448,7 @@ class pluginComments extends Plugin {
         $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
         if ($this->isRateLimited($ip)) {
             $mins = ceil($this->getIntSetting('rateLimitSeconds', 300) / 60);
-            $this->setFlash('error', "Vous commentez trop souvent. Merci de patienter {$mins} minute(s).");
+            $this->setFlash('error', $this->t('flash_rate_limited', ['minutes' => $mins]));
             $this->redirectToPage();
             return;
         }
@@ -396,13 +457,13 @@ class pluginComments extends Plugin {
         $content = trim($_POST['comment_content'] ?? '');
 
         if (empty($author) || empty($content)) {
-            $this->setFlash('error', 'Le pseudo et le contenu sont requis.');
+            $this->setFlash('error', $this->t('flash_author_content_required'));
             $this->redirectToPage();
             return;
         }
 
         if ($this->safeLength($author) > 100) {
-            $this->setFlash('error', 'Le pseudo ne peut pas dépasser 100 caractères.');
+            $this->setFlash('error', $this->t('flash_author_too_long'));
             $this->redirectToPage();
             return;
         }
@@ -411,13 +472,13 @@ class pluginComments extends Plugin {
         $maxLen = (int) $this->getValue('maxCommentLength');
 
         if ($this->safeLength($content) < $minLen) {
-            $this->setFlash('error', "Le commentaire est trop court (minimum {$minLen} caractères).");
+            $this->setFlash('error', $this->t('flash_comment_too_short', ['min' => $minLen]));
             $this->redirectToPage();
             return;
         }
 
         if ($this->safeLength($content) > $maxLen) {
-            $this->setFlash('error', "Le commentaire est trop long (maximum {$maxLen} caractères).");
+            $this->setFlash('error', $this->t('flash_comment_too_long', ['max' => $maxLen]));
             $this->redirectToPage();
             return;
         }
@@ -439,8 +500,8 @@ class pluginComments extends Plugin {
         $this->saveComments($pageKey, $list, $status);
 
         $msg = $requireApproval
-            ? '✓ Merci ! Votre commentaire sera publié après modération.'
-            : '✓ Votre commentaire a été publié. Merci !';
+            ? $this->t('flash_comment_pending')
+            : $this->t('flash_comment_published');
 
         $this->setFlash('success', $msg);
         $this->redirectToPage();
@@ -775,6 +836,7 @@ class pluginComments extends Plugin {
         $pageKey   = $m[3] ?? '';
         $isEnabled = $pageKey ? $this->isCommentsEnabled($pageKey) : false;
         $ajaxBase  = HTML_PATH_ROOT;
+        $plugin    = $this;
 
         ob_start();
         include __DIR__ . '/views/page-editor-panel.php';
@@ -786,7 +848,7 @@ class pluginComments extends Plugin {
         $url = HTML_PATH_ADMIN_ROOT . 'configure-plugin/pluginComments';
         return '<li class="nav-item">'
              . '<a class="nav-link" href="' . $url . '">'
-             . '<i class="fa fa-comments-o"></i>&nbsp;&nbsp;Commentaires'
+             . '<i class="fa fa-comments-o"></i>&nbsp;&nbsp;' . htmlspecialchars($this->t('sidebar_comments'), ENT_QUOTES, 'UTF-8')
              . '</a></li>' . "\n";
     }
 

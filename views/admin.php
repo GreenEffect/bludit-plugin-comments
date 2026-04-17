@@ -1,22 +1,28 @@
 <?php defined('BLUDIT') or die('Bludit CMS.'); ?>
 
-<div class="blc-admin" id="blc-admin-root">
+<div class="blc-admin" id="blc-admin-root"
+     data-label-enabled="<?php echo htmlspecialchars($plugin->t('status_enabled'), ENT_QUOTES, 'UTF-8'); ?>"
+     data-label-disabled="<?php echo htmlspecialchars($plugin->t('status_disabled'), ENT_QUOTES, 'UTF-8'); ?>"
+     data-error-action="<?php echo htmlspecialchars($plugin->t('admin_error_action'), ENT_QUOTES, 'UTF-8'); ?>"
+     data-saving-ok="<?php echo htmlspecialchars($plugin->t('admin_saved_ok'), ENT_QUOTES, 'UTF-8'); ?>"
+     data-saving-error="<?php echo htmlspecialchars($plugin->t('admin_saved_error'), ENT_QUOTES, 'UTF-8'); ?>"
+     data-saving-network-error="<?php echo htmlspecialchars($plugin->t('admin_saved_network_error'), ENT_QUOTES, 'UTF-8'); ?>">
 
     <!-- ── En-tête ────────────────────────────── -->
     <div class="blc-admin-header">
         <h2 class="blc-admin-header__title">
             <svg class="blc-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-            Gestion des commentaires
+            <?php echo htmlspecialchars($plugin->t('admin_title'), ENT_QUOTES, 'UTF-8'); ?>
         </h2>
         <div class="blc-stats-bar">
             <span class="blc-stat blc-stat--pending">
-                <strong><?php echo $totalPending; ?></strong> en attente
+                <strong><?php echo $totalPending; ?></strong> <?php echo htmlspecialchars($plugin->t('admin_stat_pending'), ENT_QUOTES, 'UTF-8'); ?>
             </span>
             <span class="blc-stat blc-stat--approved">
-                <strong><?php echo $totalApproved; ?></strong> publiés
+                <strong><?php echo $totalApproved; ?></strong> <?php echo htmlspecialchars($plugin->t('admin_stat_published'), ENT_QUOTES, 'UTF-8'); ?>
             </span>
             <span class="blc-stat">
-                <strong><?php echo count($pagesWithComments); ?></strong> page(s) actives
+                <strong><?php echo count($pagesWithComments); ?></strong> <?php echo htmlspecialchars($plugin->t('admin_stat_active_pages'), ENT_QUOTES, 'UTF-8'); ?>
             </span>
         </div>
     </div>
@@ -30,7 +36,7 @@
                 aria-selected="true"
                 aria-controls="blc-tab-moderation"
                 id="tab-moderation-btn">
-            Modération
+            <?php echo htmlspecialchars($plugin->t('tab_moderation'), ENT_QUOTES, 'UTF-8'); ?>
             <?php if ($totalPending > 0): ?>
             <span class="blc-badge blc-badge--alert"><?php echo $totalPending; ?></span>
             <?php endif; ?>
@@ -42,7 +48,7 @@
                 aria-selected="false"
                 aria-controls="blc-tab-pages"
                 id="tab-pages-btn">
-            Pages
+            <?php echo htmlspecialchars($plugin->t('tab_pages'), ENT_QUOTES, 'UTF-8'); ?>
         </button>
         <button type="button"
                 class="blc-tab"
@@ -51,7 +57,7 @@
                 aria-selected="false"
                 aria-controls="blc-tab-settings"
                 id="tab-settings-btn">
-            Réglages
+            <?php echo htmlspecialchars($plugin->t('tab_settings'), ENT_QUOTES, 'UTF-8'); ?>
         </button>
     </nav>
 
@@ -63,7 +69,7 @@
         <?php if (empty($pagesWithComments)): ?>
         <div class="blc-empty-state">
             <svg viewBox="0 0 64 64" aria-hidden="true"><path d="M32 8C18.7 8 8 18.7 8 32s10.7 24 24 24 24-10.7 24-24S45.3 8 32 8zm0 4c11.1 0 20 8.9 20 20s-8.9 20-20 20S12 43.1 12 32s8.9-20 20-20zm-2 10v12l8 4.8-1.6 2.7L28 36V22h2z" fill="currentColor"/></svg>
-            <p>Aucun commentaire pour le moment.<br>Activez les commentaires sur une page pour commencer.</p>
+            <p><?php echo htmlspecialchars($plugin->t('admin_empty_state'), ENT_QUOTES, 'UTF-8'); ?></p>
         </div>
         <?php else: ?>
 
@@ -80,7 +86,7 @@
                 </span>
                 <span class="blc-page-block__badges">
                     <?php if ($countP > 0): ?>
-                    <span class="blc-badge blc-badge--pending"><?php echo $countP; ?> en attente</span>
+                    <span class="blc-badge blc-badge--pending"><?php echo $countP; ?> <?php echo htmlspecialchars($plugin->t('admin_stat_pending'), ENT_QUOTES, 'UTF-8'); ?></span>
                     <?php endif; ?>
                     <?php if ($countA > 0): ?>
                     <span class="blc-badge blc-badge--approved"><?php echo $countA; ?> publié<?php echo $countA > 1 ? 's' : ''; ?></span>
@@ -94,7 +100,7 @@
                 <!-- EN ATTENTE -->
                 <?php if (!empty($pg['pending'])): ?>
                 <div class="blc-section-label blc-section-label--pending">
-                    ⏳ En attente de modération
+                    <?php echo htmlspecialchars($plugin->t('admin_pending_section'), ENT_QUOTES, 'UTF-8'); ?>
                 </div>
                 <div class="blc-comments-group">
                     <?php foreach ($pg['pending'] as $c): ?>
@@ -118,14 +124,14 @@
                                     data-action="approve"
                                     data-page-key="<?php echo htmlspecialchars($pg['key'], ENT_QUOTES, 'UTF-8'); ?>"
                                     data-comment-id="<?php echo htmlspecialchars($c['id'], ENT_QUOTES, 'UTF-8'); ?>">
-                                ✓ Publier
+                                <?php echo htmlspecialchars($plugin->t('admin_action_publish'), ENT_QUOTES, 'UTF-8'); ?>
                             </button>
                             <button type="button"
                                     class="blc-btn blc-btn--delete blc-action-btn"
                                     data-action="delete_pending"
                                     data-page-key="<?php echo htmlspecialchars($pg['key'], ENT_QUOTES, 'UTF-8'); ?>"
                                     data-comment-id="<?php echo htmlspecialchars($c['id'], ENT_QUOTES, 'UTF-8'); ?>">
-                                ✕ Supprimer
+                                <?php echo htmlspecialchars($plugin->t('admin_action_delete'), ENT_QUOTES, 'UTF-8'); ?>
                             </button>
                         </div>
                     </div>
@@ -138,7 +144,7 @@
                             data-action="clear_pending"
                             data-page-key="<?php echo htmlspecialchars($pg['key'], ENT_QUOTES, 'UTF-8'); ?>"
                             data-comment-id="">
-                        Supprimer tous les commentaires en attente
+                        <?php echo htmlspecialchars($plugin->t('admin_action_delete_all_pending'), ENT_QUOTES, 'UTF-8'); ?>
                     </button>
                 </div>
                 <?php endif; ?>
@@ -147,7 +153,7 @@
                 <!-- APPROUVÉS -->
                 <?php if (!empty($pg['approved'])): ?>
                 <div class="blc-section-label blc-section-label--approved">
-                    ✓ Publiés
+                    <?php echo htmlspecialchars($plugin->t('admin_published_section'), ENT_QUOTES, 'UTF-8'); ?>
                 </div>
                 <div class="blc-comments-group">
                     <?php foreach (array_reverse($pg['approved']) as $c): ?>
@@ -171,7 +177,7 @@
                                     data-action="delete_approved"
                                     data-page-key="<?php echo htmlspecialchars($pg['key'], ENT_QUOTES, 'UTF-8'); ?>"
                                     data-comment-id="<?php echo htmlspecialchars($c['id'], ENT_QUOTES, 'UTF-8'); ?>">
-                                ✕ Supprimer
+                                <?php echo htmlspecialchars($plugin->t('admin_action_delete'), ENT_QUOTES, 'UTF-8'); ?>
                             </button>
                         </div>
                     </div>
@@ -180,7 +186,7 @@
                 <?php endif; ?>
 
                 <?php if (empty($pg['pending']) && empty($pg['approved'])): ?>
-                <p class="blc-no-comments">Aucun commentaire sur cette page.</p>
+                <p class="blc-no-comments"><?php echo htmlspecialchars($plugin->t('admin_no_comments_this_page'), ENT_QUOTES, 'UTF-8'); ?></p>
                 <?php endif; ?>
 
                 <!-- Tout supprimer -->
@@ -191,8 +197,8 @@
                             data-action="clear_all"
                             data-page-key="<?php echo htmlspecialchars($pg['key'], ENT_QUOTES, 'UTF-8'); ?>"
                             data-comment-id=""
-                            data-confirm="Supprimer TOUS les commentaires de cette page ?">
-                        🗑 Vider tous les commentaires de cette page
+                            data-confirm="<?php echo htmlspecialchars($plugin->t('admin_confirm_clear_all'), ENT_QUOTES, 'UTF-8'); ?>">
+                        <?php echo htmlspecialchars($plugin->t('admin_action_clear_all'), ENT_QUOTES, 'UTF-8'); ?>
                     </button>
                 </div>
                 <?php endif; ?>
@@ -208,12 +214,11 @@
     ═══════════════════════════════════════════════ -->
     <div class="blc-tab-content" id="blc-tab-pages" role="tabpanel">
         <p class="blc-help-intro">
-            Activez ou désactivez les commentaires pour chaque page.<br>
-            Vous pouvez aussi le faire directement depuis l'éditeur de page.
+            <?php echo htmlspecialchars($plugin->t('admin_pages_help'), ENT_QUOTES, 'UTF-8'); ?>
         </p>
 
         <?php if (empty($allBluditPages)): ?>
-        <p class="blc-empty">Aucune page trouvée.</p>
+        <p class="blc-empty"><?php echo htmlspecialchars($plugin->t('admin_no_pages_found'), ENT_QUOTES, 'UTF-8'); ?></p>
         <?php else: ?>
         <div class="blc-pages-table">
             <?php foreach ($allBluditPages as $bp): ?>
@@ -223,14 +228,14 @@
                     <?php echo htmlspecialchars($bp['title'], ENT_QUOTES, 'UTF-8'); ?>
                     <small><?php echo htmlspecialchars($bp['key'], ENT_QUOTES, 'UTF-8'); ?></small>
                 </span>
-                <label class="blc-toggle" title="<?php echo $isEnabled ? 'Désactiver' : 'Activer'; ?> les commentaires">
+                <label class="blc-toggle" title="<?php echo htmlspecialchars(($isEnabled ? $plugin->t('toggle_disable') : $plugin->t('toggle_enable')) . ' ' . $plugin->t('sidebar_comments'), ENT_QUOTES, 'UTF-8'); ?>">
                     <input type="checkbox"
                            class="blc-toggle__input blc-page-toggle"
                            data-page-key="<?php echo htmlspecialchars($bp['key'], ENT_QUOTES, 'UTF-8'); ?>"
                            <?php echo $isEnabled ? 'checked' : ''; ?>>
                     <span class="blc-toggle__track"></span>
                     <span class="blc-toggle__status">
-                        <?php echo $isEnabled ? 'Activés' : 'Désactivés'; ?>
+                        <?php echo htmlspecialchars($isEnabled ? $plugin->t('status_enabled') : $plugin->t('status_disabled'), ENT_QUOTES, 'UTF-8'); ?>
                     </span>
                 </label>
             </div>
@@ -252,14 +257,14 @@
                            name="requireApproval"
                            value="1"
                            <?php echo $requireApproval ? 'checked' : ''; ?>>
-                    Modération avant publication
+                    <?php echo htmlspecialchars($plugin->t('setting_require_approval'), ENT_QUOTES, 'UTF-8'); ?>
                 </label>
-                <p class="blc-setting__help">Les nouveaux commentaires nécessitent une validation.</p>
+                <p class="blc-setting__help"><?php echo htmlspecialchars($plugin->t('setting_require_approval_help'), ENT_QUOTES, 'UTF-8'); ?></p>
             </div>
 
             <div class="blc-setting">
                 <label class="blc-setting__label" for="s-minlen">
-                    Longueur minimale du commentaire
+                    <?php echo htmlspecialchars($plugin->t('setting_min_comment_length'), ENT_QUOTES, 'UTF-8'); ?>
                 </label>
                 <input type="number"
                        id="s-minlen"
@@ -271,7 +276,7 @@
 
             <div class="blc-setting">
                 <label class="blc-setting__label" for="s-maxlen">
-                    Longueur maximale du commentaire
+                    <?php echo htmlspecialchars($plugin->t('setting_max_comment_length'), ENT_QUOTES, 'UTF-8'); ?>
                 </label>
                 <input type="number"
                        id="s-maxlen"
@@ -283,32 +288,32 @@
 
             <div class="blc-setting">
                 <label class="blc-setting__label" for="s-rate">
-                    Délai entre deux commentaires (secondes)
+                    <?php echo htmlspecialchars($plugin->t('setting_rate_limit'), ENT_QUOTES, 'UTF-8'); ?>
                 </label>
                 <input type="number"
                        id="s-rate"
                        name="rateLimitSeconds"
                        value="<?php echo $rateLimitSeconds; ?>"
                        min="0" max="86400">
-                <p class="blc-setting__help">Temps de blocage par IP après un commentaire. 0 = désactivé.</p>
+                <p class="blc-setting__help"><?php echo htmlspecialchars($plugin->t('setting_rate_limit_help'), ENT_QUOTES, 'UTF-8'); ?></p>
             </div>
 
             <div class="blc-setting">
                 <label class="blc-setting__label" for="s-perpage">
-                    Commentaires affichés par page
+                    <?php echo htmlspecialchars($plugin->t('setting_comments_per_page'), ENT_QUOTES, 'UTF-8'); ?>
                 </label>
                 <input type="number"
                        id="s-perpage"
                        name="commentsPerPage"
                        value="<?php echo $commentsPerPage; ?>"
                        min="1" max="100">
-                <p class="blc-setting__help">Nombre de commentaires affiches par page sur le site.</p>
+                <p class="blc-setting__help"><?php echo htmlspecialchars($plugin->t('setting_comments_per_page_help'), ENT_QUOTES, 'UTF-8'); ?></p>
             </div>
 
         </div>
 
         <p class="blc-settings-save-hint">
-            → Cliquez sur <strong>Save</strong> en bas de page pour enregistrer ces réglages.
+            <?php echo htmlspecialchars($plugin->t('admin_save_hint'), ENT_QUOTES, 'UTF-8'); ?>
         </p>
     </div>
 

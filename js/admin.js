@@ -1,6 +1,15 @@
 /* bl-plugin-comments — admin.js */
 (function () {
   'use strict';
+  var adminRoot = document.getElementById('blc-admin-root');
+  var I18N = {
+    enabled: (adminRoot && adminRoot.dataset.labelEnabled) || 'Enabled',
+    disabled: (adminRoot && adminRoot.dataset.labelDisabled) || 'Disabled',
+    errorAction: (adminRoot && adminRoot.dataset.errorAction) || 'Error while processing action. Please try again.',
+    savingOk: (adminRoot && adminRoot.dataset.savingOk) || 'Saved',
+    savingError: (adminRoot && adminRoot.dataset.savingError) || 'Error',
+    savingNetworkError: (adminRoot && adminRoot.dataset.savingNetworkError) || 'Network error'
+  };
 
   /* ═══════════════════════════════════════════════
      TABS
@@ -231,7 +240,7 @@
         if (r.ok || r.redirected) {
           window.location.reload();
         } else {
-          alert('Erreur lors de l\'action. Veuillez réessayer.');
+          alert(I18N.errorAction);
           btn.disabled = false;
           btn.style.opacity = '';
         }
@@ -252,7 +261,7 @@
       var toggleInput = this;
 
       var statusEl = this.closest('.blc-toggle').querySelector('.blc-toggle__status');
-      if (statusEl) statusEl.textContent = enabled ? 'Activés' : 'Désactivés';
+      if (statusEl) statusEl.textContent = enabled ? I18N.enabled : I18N.disabled;
 
       var fd = new FormData();
       fd.append('bl_toggle_comments', '1');
@@ -274,13 +283,13 @@
         if (!data.ok) {
           // Rollback
           toggleInput.checked = !enabled;
-          if (statusEl) statusEl.textContent = !enabled ? 'Activés' : 'Désactivés';
+          if (statusEl) statusEl.textContent = !enabled ? I18N.enabled : I18N.disabled;
         }
       })
       .catch(function () {
         // Rollback visible en cas d'erreur serveur/réseau
         toggleInput.checked = !enabled;
-        if (statusEl) statusEl.textContent = !enabled ? 'Activés' : 'Désactivés';
+        if (statusEl) statusEl.textContent = !enabled ? I18N.enabled : I18N.disabled;
       });
     });
   });
@@ -321,7 +330,7 @@
       var label   = document.getElementById('blc-editor-toggle-label');
       var saving  = document.getElementById('blc-editor-saving');
 
-      if (label) label.textContent = enabled ? 'Activés' : 'Désactivés';
+      if (label) label.textContent = enabled ? I18N.enabled : I18N.disabled;
 
       var fd = new FormData();
       fd.append('bl_toggle_comments', '1');
@@ -342,19 +351,19 @@
       .then(function (data) {
         if (!data.ok) {
           toggleInput.checked = !enabled;
-          if (label) label.textContent = !enabled ? 'Activés' : 'Désactivés';
+          if (label) label.textContent = !enabled ? I18N.enabled : I18N.disabled;
         }
         if (saving) {
-          saving.textContent = data.ok ? '✓ Sauvegardé' : '⚠ Erreur';
+          saving.textContent = data.ok ? I18N.savingOk : I18N.savingError;
           saving.classList.add('visible');
           setTimeout(function () { saving.classList.remove('visible'); }, 2200);
         }
       })
       .catch(function () {
         toggleInput.checked = !enabled;
-        if (label) label.textContent = !enabled ? 'Activés' : 'Désactivés';
+        if (label) label.textContent = !enabled ? I18N.enabled : I18N.disabled;
         if (saving) {
-          saving.textContent = '⚠ Erreur réseau';
+          saving.textContent = I18N.savingNetworkError;
           saving.classList.add('visible');
           setTimeout(function () { saving.classList.remove('visible'); }, 2200);
         }

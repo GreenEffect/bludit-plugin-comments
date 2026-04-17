@@ -66,7 +66,8 @@
     var currentPage = 1;
     var nav = document.createElement('nav');
     nav.className = 'blc-pagination blc-pagination--front';
-    nav.setAttribute('aria-label', 'Pagination des commentaires');
+    var paginationLabel = (commentsSection && commentsSection.dataset.paginationLabel) || 'Comments pagination';
+    nav.setAttribute('aria-label', paginationLabel);
     list.insertAdjacentElement('afterend', nav);
 
     function renderControls() {

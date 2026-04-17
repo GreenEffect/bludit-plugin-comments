@@ -1,13 +1,14 @@
 <?php defined('BLUDIT') or die('Bludit CMS.'); ?>
 <section id="comments"
          class="blc-front"
-         aria-label="Commentaires"
-         data-comments-per-page="<?php echo $commentsPerPage; ?>">
+         aria-label="<?php echo htmlspecialchars($plugin->t('front_comments_aria'), ENT_QUOTES, 'UTF-8'); ?>"
+         data-comments-per-page="<?php echo $commentsPerPage; ?>"
+         data-pagination-label="<?php echo htmlspecialchars($plugin->t('front_pagination_label'), ENT_QUOTES, 'UTF-8'); ?>">
 
     <h3 class="blc-front__title">
         <svg class="blc-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
         <?php $n = count($approvedComments); ?>
-        <?php echo $n; ?> commentaire<?php echo $n !== 1 ? 's' : ''; ?>
+        <?php echo $plugin->t('front_comments_count', ['count' => $n]); ?>
     </h3>
 
     <?php if ($successMsg): ?>
@@ -46,12 +47,12 @@
         <?php endforeach; ?>
     </div>
     <?php else: ?>
-    <p class="blc-front__empty">Aucun commentaire pour l'instant. Soyez le premier à commenter !</p>
+    <p class="blc-front__empty"><?php echo htmlspecialchars($plugin->t('front_no_comments'), ENT_QUOTES, 'UTF-8'); ?></p>
     <?php endif; ?>
 
     <!-- ── Formulaire ─────────────────────────── -->
     <div class="blc-front__form-wrap">
-        <h4 class="blc-front__form-title">Laisser un commentaire</h4>
+        <h4 class="blc-front__form-title"><?php echo htmlspecialchars($plugin->t('front_form_title'), ENT_QUOTES, 'UTF-8'); ?></h4>
 
         <form class="blc-front__form" method="POST" action="<?php echo htmlspecialchars($pageUrl, ENT_QUOTES, 'UTF-8'); ?>" novalidate>
             <input type="hidden" name="bl_comment_submit" value="1">
@@ -64,7 +65,7 @@
 
             <div class="blc-front__field">
                 <label for="blc-author">
-                    Pseudo <span class="blc-required" aria-hidden="true">*</span>
+                    <?php echo htmlspecialchars($plugin->t('front_label_author'), ENT_QUOTES, 'UTF-8'); ?> <span class="blc-required" aria-hidden="true">*</span>
                 </label>
                 <input type="text"
                        id="blc-author"
@@ -72,12 +73,12 @@
                        maxlength="100"
                        required
                        autocomplete="nickname"
-                       placeholder="Votre pseudo">
+                       placeholder="<?php echo htmlspecialchars($plugin->t('front_placeholder_author'), ENT_QUOTES, 'UTF-8'); ?>">
             </div>
 
             <div class="blc-front__field">
                 <label for="blc-content">
-                    Commentaire <span class="blc-required" aria-hidden="true">*</span>
+                    <?php echo htmlspecialchars($plugin->t('front_label_comment'), ENT_QUOTES, 'UTF-8'); ?> <span class="blc-required" aria-hidden="true">*</span>
                     <span class="blc-md-hint" title="Markdown supporté">
                         <code>**gras**</code> &nbsp;
                         <code>*italique*</code> &nbsp;
@@ -89,7 +90,7 @@
                           rows="6"
                           required
                           maxlength="<?php echo $maxLen; ?>"
-                          placeholder="Votre commentaire…"></textarea>
+                          placeholder="<?php echo htmlspecialchars($plugin->t('front_placeholder_comment'), ENT_QUOTES, 'UTF-8'); ?>"></textarea>
                 <div class="blc-char-count">
                     <span id="blc-char-current">0</span>&nbsp;/&nbsp;<?php echo $maxLen; ?>
                 </div>
@@ -97,7 +98,7 @@
 
             <div class="blc-front__field">
                 <label for="blc-altcha">
-                    Verification anti-spam <span class="blc-required" aria-hidden="true">*</span>
+                    <?php echo htmlspecialchars($plugin->t('front_label_antispam'), ENT_QUOTES, 'UTF-8'); ?> <span class="blc-required" aria-hidden="true">*</span>
                 </label>
                 <altcha-widget
                     id="blc-altcha"
@@ -108,7 +109,7 @@
 
             <div class="blc-front__actions">
                 <button type="submit" class="blc-btn-submit">
-                    Publier le commentaire
+                    <?php echo htmlspecialchars($plugin->t('front_submit_comment'), ENT_QUOTES, 'UTF-8'); ?>
                 </button>
             </div>
         </form>
