@@ -13,6 +13,99 @@
 class pluginComments extends Plugin {
     private $frontCommentsRendered = false;
 
+    private function safeLength(string $value): int
+    {
+        return function_exists('mb_strlen') ? (int) mb_strlen($value) : strlen($value);
+    }
+
+    private function safeToLower(string $value): string
+    {
+        return function_exists('mb_strtolower') ? mb_strtolower($value, 'UTF-8') : strtolower($value);
+    }
+
+    private function safePos(string $haystack, string $needle)
+    {
+        return function_exists('mb_strpos') ? mb_strpos($haystack, $needle) : strpos($haystack, $needle);
+    }
+
+    private function runtimeSettingsFile(): string
+    {
+        return $this->commentsBasePath() . 'runtime-settings.json';
+    }
+
+    private function loadRuntimeSettings(): array
+    {
+        $file = $this->runtimeSettingsFile();
+        if (!file_exists($file)) {
+            return [];
+        }
+        $data = json_decode((string) file_get_contents($file), true);
+        return is_array($data) ? $data : [];
+    }
+
+    private function saveRuntimeSettings(array $settings): void
+    {
+        file_put_contents(
+            $this->runtimeSettingsFile(),
+            json_encode($settings, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
+        );
+    }
+
+    private function getIntSetting(string $key, int $default): int
+    {
+        $runtime = $this->loadRuntimeSettings();
+        if (array_key_exists($key, $runtime)) {
+            return (int) $runtime[$key];
+        }
+
+        $value = $this->getValue($key);
+        if ($value === null || $value === '') {
+            return $default;
+        }
+
+        return (int) $value;
+    }
+
+    private function syncRuntimeSettingsFromAdminPost(): void
+    {
+        if (!$this->adminIsLogged()) {
+            return;
+        }
+
+        $settingsKeys = ['requireApproval', 'commentsPerPage', 'minCommentLength', 'maxCommentLength', 'rateLimitSeconds'];
+        $hasSettingsPost = false;
+        foreach ($settingsKeys as $k) {
+            if (array_key_exists($k, $_POST)) {
+                $hasSettingsPost = true;
+                break;
+            }
+        }
+
+        if (!$hasSettingsPost) {
+            return;
+        }
+
+        $current = $this->loadRuntimeSettings();
+        $oldRate = isset($current['rateLimitSeconds']) ? (int) $current['rateLimitSeconds'] : null;
+
+        // Checkbox non soumis => valeur false explicite
+        $current['requireApproval']  = !empty($_POST['requireApproval']) ? 1 : 0;
+        $current['commentsPerPage']  = max(1, (int) ($_POST['commentsPerPage'] ?? 10));
+        $current['minCommentLength'] = max(1, (int) ($_POST['minCommentLength'] ?? 10));
+        $current['maxCommentLength'] = max(1, (int) ($_POST['maxCommentLength'] ?? 1000));
+        $current['rateLimitSeconds'] = max(0, (int) ($_POST['rateLimitSeconds'] ?? 300));
+
+        $this->saveRuntimeSettings($current);
+
+        // Purger les quotas existants si le delai change.
+        if ($oldRate !== null && $oldRate !== (int) $current['rateLimitSeconds']) {
+            $rateFile = $this->commentsBasePath() . 'rate_limits.json';
+            if (file_exists($rateFile)) {
+                @unlink($rateFile);
+            }
+        }
+    }
+
     // ──────────────────────────────────────────────
     //  INITIALISATION
     // ──────────────────────────────────────────────
@@ -42,6 +135,9 @@ class pluginComments extends Plugin {
         if (!file_exists($base)) {
             mkdir($base, 0755, true);
         }
+
+        // Garantit l'usage des reglages back-office au runtime front.
+        $this->syncRuntimeSettingsFromAdminPost();
 
         // ── Soumission commentaire (front) ─────────
         if (!empty($_POST['bl_comment_submit'])) {
@@ -211,7 +307,7 @@ class pluginComments extends Plugin {
 
     private function isRateLimited(string $ip): bool
     {
-        $limit = (int) $this->getValue('rateLimitSeconds');
+        $limit = $this->getIntSetting('rateLimitSeconds', 300);
         if ($limit <= 0) {
             return false;
         }
@@ -290,7 +386,7 @@ class pluginComments extends Plugin {
 
         $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
         if ($this->isRateLimited($ip)) {
-            $mins = ceil((int) $this->getValue('rateLimitSeconds') / 60);
+            $mins = ceil($this->getIntSetting('rateLimitSeconds', 300) / 60);
             $this->setFlash('error', "Vous commentez trop souvent. Merci de patienter {$mins} minute(s).");
             $this->redirectToPage();
             return;
@@ -305,7 +401,7 @@ class pluginComments extends Plugin {
             return;
         }
 
-        if (mb_strlen($author) > 100) {
+        if ($this->safeLength($author) > 100) {
             $this->setFlash('error', 'Le pseudo ne peut pas dépasser 100 caractères.');
             $this->redirectToPage();
             return;
@@ -314,13 +410,13 @@ class pluginComments extends Plugin {
         $minLen = (int) $this->getValue('minCommentLength');
         $maxLen = (int) $this->getValue('maxCommentLength');
 
-        if (mb_strlen($content) < $minLen) {
+        if ($this->safeLength($content) < $minLen) {
             $this->setFlash('error', "Le commentaire est trop court (minimum {$minLen} caractères).");
             $this->redirectToPage();
             return;
         }
 
-        if (mb_strlen($content) > $maxLen) {
+        if ($this->safeLength($content) > $maxLen) {
             $this->setFlash('error', "Le commentaire est trop long (maximum {$maxLen} caractères).");
             $this->redirectToPage();
             return;
@@ -525,10 +621,10 @@ class pluginComments extends Plugin {
                         continue; // Skip static pages if desired
                     }
                     $title = (string) ($data['title'] ?? $key);
-                    $titleLower = mb_strtolower($title, 'UTF-8');
+                    $titleLower = $this->safeToLower($title);
                     if (
-                        mb_strpos($titleLower, '[sauvegarde automatique]') !== false
-                        || mb_strpos($titleLower, '[autosave]') !== false
+                        $this->safePos($titleLower, '[sauvegarde automatique]') !== false
+                        || $this->safePos($titleLower, '[autosave]') !== false
                     ) {
                         continue;
                     }
@@ -634,7 +730,7 @@ class pluginComments extends Plugin {
         $pageUrl          = $page->permalink();
         $successMsg       = $this->getFlash('success');
         $errorMsg         = $this->getFlash('error');
-        $commentsPerPage  = max(1, (int) $this->getValue('commentsPerPage'));
+        $commentsPerPage  = max(1, $this->getIntSetting('commentsPerPage', 10));
         $maxLen           = (int)  $this->getValue('maxCommentLength');
         $pluginUrl        = HTML_PATH_PLUGINS . 'bl-plugin-comments/';
         $plugin           = $this;
@@ -714,10 +810,10 @@ class pluginComments extends Plugin {
 
         // Récupération des valeurs de config
         $requireApproval  = (bool) $this->getValue('requireApproval');
-        $commentsPerPage  = (int)  $this->getValue('commentsPerPage');
+        $commentsPerPage  = max(1, $this->getIntSetting('commentsPerPage', 10));
         $minCommentLength = (int)  $this->getValue('minCommentLength');
         $maxCommentLength = (int)  $this->getValue('maxCommentLength');
-        $rateLimitSeconds = (int)  $this->getValue('rateLimitSeconds');
+        $rateLimitSeconds = max(0, $this->getIntSetting('rateLimitSeconds', 300));
 
         $plugin = $this;
 
