@@ -1,1 +1,3 @@
 - Make the display order of comments manageable
+- Display the number of comments below the page titles
+- Add an "email" field to the comment form (optional) to offer the option to send a notification when a comment is published
