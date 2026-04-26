@@ -78,6 +78,9 @@ class pluginComments extends Plugin {
             if (strpos($candidate, 'fr') === 0) {
                 return 'fr_FR';
             }
+            if (strpos($candidate, 'cs') === 0) {
+                return 'cs_CZ';
+            }
             if (strpos($candidate, 'en') === 0) {
                 return 'en';
             }

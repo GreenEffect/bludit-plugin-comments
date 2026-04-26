@@ -26,7 +26,7 @@
         "admin_saved_ok": "Saved",
         "admin_saved_error": "Error",
         "admin_saved_network_error": "Network error",
-        "admin_save_hint": "Click Save at the bottom of the page to save these settings.",
+        "admin_save_hint": "Click Save at the top of the page to save these settings.",
         "setting_require_approval": "Moderation before publishing",
         "setting_require_approval_help": "New comments require validation.",
         "setting_min_comment_length": "Minimum comment length",
