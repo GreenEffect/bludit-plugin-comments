@@ -128,6 +128,37 @@
 .blc-badge--approved { background: var(--blca-approved-bg); color: var(--blca-approved-tx); border: 1px solid var(--blca-approved-bd); }
 .blc-badge--alert    { background: #ef4444; color: #fff; }
 
+/* ── Sidebar badge ────────────────────────────────────── */
+.blc-sidebar-link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .6rem;
+}
+
+.blc-sidebar-link__label {
+    display: inline-flex;
+    align-items: center;
+    min-width: 0;
+}
+
+.blc-sidebar-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: #dc2626;
+    color: #fff;
+    font-size: .72rem;
+    font-weight: 700;
+    line-height: 1;
+    flex-shrink: 0;
+    margin-left: 5px;
+}
+
 /* ── Empty state ───────────────────────────────────────── */
 .blc-empty-state {
     text-align: center;

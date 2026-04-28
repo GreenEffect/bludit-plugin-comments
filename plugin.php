@@ -1451,9 +1451,18 @@ class pluginComments extends Plugin {
     public function adminSidebar(): string
     {
         $url = HTML_PATH_ADMIN_ROOT . 'configure-plugin/pluginComments';
+        $totalPending = 0;
+        foreach ($this->getPagesWithComments() as $pageComments) {
+            $totalPending += count($pageComments['pending']);
+        }
+
+        $badge = $totalPending > 0
+            ? '<span class="blc-sidebar-badge" aria-label="' . (int) $totalPending . ' pending comments">' . (int) $totalPending . '</span>'
+            : '';
+
         return '<li class="nav-item">'
-             . '<a class="nav-link" href="' . $url . '">'
-             . '<i class="fa fa-comments-o"></i>&nbsp;&nbsp;' . htmlspecialchars($this->t('sidebar_comments'), ENT_QUOTES, 'UTF-8')
+             . '<a class="nav-link blc-sidebar-link" href="' . $url . '">'
+             . '<span class="blc-sidebar-link__label"><i class="fa fa-comments-o"></i>&nbsp;&nbsp;' . htmlspecialchars($this->t('sidebar_comments'), ENT_QUOTES, 'UTF-8') . ' ' . $badge .'</span>'
              . '</a></li>' . "\n";
     }
 
