@@ -41,6 +41,8 @@
         "setting_comment_order_help": "Ordre dans lequel les commentaires approuvés sont affichés sur la page.",
         "setting_comment_order_desc": "Plus récents en premier (décroissant)",
         "setting_comment_order_asc": "Plus anciens en premier (croissant)",
+        "setting_altcha_algorithm": "Algorithme anti-spam Altcha",
+        "setting_altcha_algorithm_help": "Algorithme de hachage utilisé pour générer le défi anti-spam. SHA-384 et SHA-512 sont plus robustes mais demandent légèrement plus de calcul aux visiteurs.",
         "setting_smtp_enabled": "Activer l'envoi SMTP",
         "setting_smtp_enabled_help": "Utiliser un serveur SMTP personnalisé pour les emails sortants.",
         "setting_smtp_host": "Hôte SMTP",

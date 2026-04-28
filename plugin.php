@@ -197,7 +197,7 @@ class pluginComments extends Plugin {
             return;
         }
 
-        $settingsKeys = ['requireApproval', 'commentsPerPage', 'minCommentLength', 'maxCommentLength', 'rateLimitSeconds', 'commentOrder'];
+        $settingsKeys = ['requireApproval', 'commentsPerPage', 'minCommentLength', 'maxCommentLength', 'rateLimitSeconds', 'commentOrder', 'altchaAlgorithm'];
         $hasSettingsPost = false;
         foreach ($settingsKeys as $k) {
             if (array_key_exists($k, $_POST)) {
@@ -221,6 +221,8 @@ class pluginComments extends Plugin {
         $current['rateLimitSeconds'] = max(0, (int) ($_POST['rateLimitSeconds'] ?? 300));
         $rawOrder = isset($_POST['commentOrder']) ? (string) $_POST['commentOrder'] : 'desc';
         $current['commentOrder'] = in_array($rawOrder, ['asc', 'desc'], true) ? $rawOrder : 'desc';
+        $rawAlgo = isset($_POST['altchaAlgorithm']) ? strtoupper((string) $_POST['altchaAlgorithm']) : 'SHA-256';
+        $current['altchaAlgorithm'] = in_array($rawAlgo, ['SHA-256', 'SHA-384', 'SHA-512'], true) ? $rawAlgo : 'SHA-256';
 
         $this->saveRuntimeSettings($current);
 
@@ -249,7 +251,8 @@ class pluginComments extends Plugin {
             'minCommentLength' => 10,
             'maxCommentLength' => 1000,
             'rateLimitSeconds' => 300,
-            'commentOrder'     => 'desc',
+            'commentOrder'      => 'desc',
+            'altchaAlgorithm'  => 'SHA-256',
             'altchaSecret'     => '',
             'smtpEnabled'      => 0,
             'smtpHost'         => '',
@@ -656,21 +659,31 @@ class pluginComments extends Plugin {
         exit;
     }
 
+    private function altchaHashAlgo(string $altchaAlgorithm): string
+    {
+        $map = ['SHA-256' => 'sha256', 'SHA-384' => 'sha384', 'SHA-512' => 'sha512'];
+        return $map[$altchaAlgorithm] ?? 'sha256';
+    }
+
     private function outputAltchaChallenge(): void
     {
         $secret    = $this->getAltchaSecret();
-        $algorithm = 'SHA-256';
+        $algorithm = $this->getStringSetting('altchaAlgorithm', 'SHA-256');
+        if (!in_array($algorithm, ['SHA-256', 'SHA-384', 'SHA-512'], true)) {
+            $algorithm = 'SHA-256';
+        }
+        $phpAlgo   = $this->altchaHashAlgo($algorithm);
         $maxNumber = 100000;
         $number    = random_int(1, $maxNumber);
         $salt      = bin2hex(random_bytes(12));
-        $challenge = hash('sha256', $salt . $number);
-        $signature = hash_hmac('sha256', $challenge, $secret);
+        $challenge = hash($phpAlgo, $salt . $number);
+        $signature = hash_hmac($phpAlgo, $challenge, $secret);
 
         header('Content-Type: application/json; charset=UTF-8');
         echo json_encode([
             'algorithm' => $algorithm,
             'challenge' => $challenge,
-            'salt' => $salt,
+            'salt'      => $salt,
             'signature' => $signature,
             'maxnumber' => $maxNumber,
         ]);
@@ -697,7 +710,7 @@ class pluginComments extends Plugin {
         $number    = isset($decoded['number']) ? (int) $decoded['number'] : 0;
 
         if (
-            $algorithm !== 'SHA-256'
+            !in_array($algorithm, ['SHA-256', 'SHA-384', 'SHA-512'], true)
             || $challenge === ''
             || $salt === ''
             || $signature === ''
@@ -707,9 +720,10 @@ class pluginComments extends Plugin {
             return false;
         }
 
+        $phpAlgo             = $this->altchaHashAlgo($algorithm);
         $secret              = $this->getAltchaSecret();
-        $expectedChallenge   = hash('sha256', $salt . $number);
-        $expectedSignature   = hash_hmac('sha256', $challenge, $secret);
+        $expectedChallenge   = hash($phpAlgo, $salt . $number);
+        $expectedSignature   = hash_hmac($phpAlgo, $challenge, $secret);
 
         return hash_equals($expectedChallenge, $challenge)
             && hash_equals($expectedSignature, $signature);
@@ -1664,6 +1678,10 @@ class pluginComments extends Plugin {
         $commentOrder     = $this->getStringSetting('commentOrder', 'desc');
         if (!in_array($commentOrder, ['asc', 'desc'], true)) {
             $commentOrder = 'desc';
+        }
+        $altchaAlgorithm  = $this->getStringSetting('altchaAlgorithm', 'SHA-256');
+        if (!in_array($altchaAlgorithm, ['SHA-256', 'SHA-384', 'SHA-512'], true)) {
+            $altchaAlgorithm = 'SHA-256';
         }
 
         $updateAvailable = false;

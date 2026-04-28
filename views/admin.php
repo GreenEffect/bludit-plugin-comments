@@ -339,6 +339,18 @@
             </div>
 
             <div class="blc-setting">
+                <label class="blc-setting__label" for="s-altcha-algorithm">
+                    <?php echo htmlspecialchars($plugin->t('setting_altcha_algorithm'), ENT_QUOTES, 'UTF-8'); ?>
+                </label>
+                <select id="s-altcha-algorithm" name="altchaAlgorithm">
+                    <option value="SHA-256" <?php echo $altchaAlgorithm === 'SHA-256' ? 'selected' : ''; ?>>SHA-256</option>
+                    <option value="SHA-384" <?php echo $altchaAlgorithm === 'SHA-384' ? 'selected' : ''; ?>>SHA-384</option>
+                    <option value="SHA-512" <?php echo $altchaAlgorithm === 'SHA-512' ? 'selected' : ''; ?>>SHA-512</option>
+                </select>
+                <p class="blc-setting__help"><?php echo htmlspecialchars($plugin->t('setting_altcha_algorithm_help'), ENT_QUOTES, 'UTF-8'); ?></p>
+            </div>
+
+            <div class="blc-setting">
                 <label class="blc-setting__label">
                     <input type="hidden" name="checkForUpdates" value="0">
                     <input type="checkbox"
