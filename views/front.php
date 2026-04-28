@@ -39,7 +39,7 @@
                       datetime="<?php echo htmlspecialchars($comment['date'], ENT_QUOTES, 'UTF-8'); ?>">
                     <?php
                         $ts = strtotime($comment['date']);
-                        echo date('d/m/Y', $ts) . ' à ' . date('H\hi', $ts);
+                        echo date('d/m/Y', $ts) . ' ' . $plugin->t('front_date_separator') . ' ' . date('H\hi', $ts);
                     ?>
                 </time>
             </header>
@@ -106,7 +106,7 @@
             <div class="blc-front__field">
                 <label for="blc-content">
                     <?php echo htmlspecialchars($plugin->t('front_label_comment'), ENT_QUOTES, 'UTF-8'); ?> <span class="blc-required" aria-hidden="true">*</span>
-                    <span class="blc-md-hint" title="Markdown supporté">
+                    <span class="blc-md-hint" title="<?php echo htmlspecialchars($plugin->t('front_markdown_hint_title'), ENT_QUOTES, 'UTF-8'); ?>">
                         <code>**gras**</code> &nbsp;
                         <code>*italique*</code> &nbsp;
                         <code>`code`</code>

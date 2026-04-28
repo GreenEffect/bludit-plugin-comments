@@ -99,7 +99,7 @@
                     <span class="blc-badge blc-badge--pending"><?php echo $countP; ?> <?php echo htmlspecialchars($plugin->t('admin_stat_pending'), ENT_QUOTES, 'UTF-8'); ?></span>
                     <?php endif; ?>
                     <?php if ($countA > 0): ?>
-                    <span class="blc-badge blc-badge--approved"><?php echo $countA; ?> publié<?php echo $countA > 1 ? 's' : ''; ?></span>
+                    <span class="blc-badge blc-badge--approved"><?php echo htmlspecialchars($plugin->t('admin_badge_published', ['count' => $countA]), ENT_QUOTES, 'UTF-8'); ?></span>
                     <?php endif; ?>
                     <svg class="blc-chevron" viewBox="0 0 24 24" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
                 </span>
