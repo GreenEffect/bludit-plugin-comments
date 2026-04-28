@@ -676,9 +676,59 @@ class pluginComments extends Plugin {
 
     private function redirectToPage(): void
     {
-        $url = $_POST['page_url'] ?? '/';
-        header('Location: ' . $url . '#comments');
+        $rawUrl = (string) ($_POST['page_url'] ?? '');
+        $safeUrl = $this->safeFrontRedirectUrl($rawUrl);
+        header('Location: ' . $safeUrl . '#comments');
         exit;
+    }
+
+    private function safeFrontRedirectUrl(string $rawUrl): string
+    {
+        $fallback = defined('HTML_PATH_ROOT') ? HTML_PATH_ROOT : '/';
+        $rawUrl = trim(str_replace(["\r", "\n"], '', $rawUrl));
+        if ($rawUrl === '') {
+            return $fallback;
+        }
+
+        $parts = @parse_url($rawUrl);
+        if ($parts === false) {
+            return $fallback;
+        }
+
+        $query = isset($parts['query']) && $parts['query'] !== ''
+            ? '?' . $parts['query']
+            : '';
+
+        if (isset($parts['scheme'])) {
+            $scheme = strtolower((string) $parts['scheme']);
+            if (!in_array($scheme, ['http', 'https'], true)) {
+                return $fallback;
+            }
+
+            $targetHost = strtolower((string) ($parts['host'] ?? ''));
+            $currentHost = strtolower((string) ($_SERVER['HTTP_HOST'] ?? ''));
+            if ($targetHost === '' || $currentHost === '' || $targetHost !== $currentHost) {
+                return $fallback;
+            }
+
+            $path = (string) ($parts['path'] ?? '/');
+            if ($path === '' || $path[0] !== '/') {
+                $path = '/';
+            }
+
+            return $path . $query;
+        }
+
+        if (isset($parts['host'])) {
+            return $fallback;
+        }
+
+        $path = (string) ($parts['path'] ?? '');
+        if ($path === '' || $path[0] !== '/') {
+            return $fallback;
+        }
+
+        return $path . $query;
     }
 
     private function altchaHashAlgo(string $altchaAlgorithm): string
