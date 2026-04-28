@@ -232,6 +232,7 @@ class pluginComments extends Plugin {
             'minCommentLength' => 10,
             'maxCommentLength' => 1000,
             'rateLimitSeconds' => 300,
+            'altchaSecret'     => '',
             'smtpEnabled'      => 0,
             'smtpHost'         => '',
             'smtpPort'         => 587,
@@ -244,16 +245,20 @@ class pluginComments extends Plugin {
             'checkForUpdates'  => 0,
         ];
 
-        // Endpoint de challenge ALTCHA (standalone, servi par le plugin)
-        if (isset($_GET['blc_altcha']) && $_GET['blc_altcha'] === 'challenge') {
-            $this->outputAltchaChallenge();
-            exit;
-        }
-
         // Créer le répertoire de données
         $base = $this->commentsBasePath();
         if (!file_exists($base)) {
             mkdir($base, 0755, true);
+        }
+
+        // Migration de la clé HMAC Altcha depuis le fichier legacy vers dbFields.
+        // S'exécute une seule fois, dès le premier chargement, sans dépendre du widget JS.
+        $this->migrateAltchaSecret();
+
+        // Endpoint de challenge ALTCHA (standalone, servi par le plugin)
+        if (isset($_GET['blc_altcha']) && $_GET['blc_altcha'] === 'challenge') {
+            $this->outputAltchaChallenge();
+            exit;
         }
 
         // Garantit l'usage des reglages back-office au runtime front.
@@ -289,6 +294,60 @@ class pluginComments extends Plugin {
     private function commentsBasePath(): string
     {
         return PATH_DATABASES . 'bl-plugin-comments' . DS;
+    }
+
+    private function pluginDbFilePath(): string
+    {
+        return PATH_PLUGINS_DATABASES . $this->directoryName . DS . 'db.php';
+    }
+
+    private function loadPluginDbFromDisk(): array
+    {
+        $dbFile = $this->pluginDbFilePath();
+        if (!file_exists($dbFile)) {
+            return [];
+        }
+
+        $raw = @file_get_contents($dbFile);
+        if (!is_string($raw) || $raw === '') {
+            return [];
+        }
+
+        $jsonStart = strpos($raw, '{');
+        if ($jsonStart === false) {
+            return [];
+        }
+
+        $parsed = json_decode(substr($raw, $jsonStart), true);
+        return is_array($parsed) ? $parsed : [];
+    }
+
+    private function savePluginDbToDisk(array $db): void
+    {
+        $dbFile = $this->pluginDbFilePath();
+        $raw = file_exists($dbFile) ? (string) @file_get_contents($dbFile) : '';
+        $jsonStart = strpos($raw, '{');
+        $prefix = $jsonStart === false
+            ? "<?php defined('BLUDIT') or die('Bludit CMS.');\n"
+            : substr($raw, 0, $jsonStart);
+
+        $json = json_encode($db, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+        if (!is_string($json) || $json === '') {
+            return;
+        }
+
+        @file_put_contents($dbFile, $prefix . $json);
+    }
+
+    private function persistPluginDbField(string $key, string $value): void
+    {
+        if (method_exists($this, 'setValue')) {
+            $this->setValue($key, $value);
+        }
+
+        $db = $this->loadPluginDbFromDisk();
+        $db[$key] = $value;
+        $this->savePluginDbToDisk($db);
     }
 
     private function pageDir(string $key): string
@@ -713,20 +772,45 @@ class pluginComments extends Plugin {
         return version_compare($remote, $local, '>');
     }
 
-    private function getAltchaSecret(): string
+    /**
+     * Appelée dans init() à chaque requête.
+     * Migre la clé legacy depuis altcha-secret.txt vers dbFields une seule fois,
+     * puis génère une nouvelle clé si aucune n'existe encore.
+     * Sans ce déclenchement précoce, la migration dépendrait du widget JS.
+     */
+    private function migrateAltchaSecret(): void
     {
-        $file = $this->commentsBasePath() . 'altcha-secret.txt';
+        // Déjà persisté en base → rien à faire.
+        $db = $this->loadPluginDbFromDisk();
+        if (!empty($db['altchaSecret'])) {
+            return;
+        }
 
-        if (file_exists($file)) {
-            $secret = trim((string) file_get_contents($file));
-            if ($secret !== '') {
-                return $secret;
+        // Migration legacy: clé précédemment stockée dans un fichier texte exposable via URL.
+        $legacyFile = $this->commentsBasePath() . 'altcha-secret.txt';
+        if (file_exists($legacyFile)) {
+            $legacySecret = trim((string) file_get_contents($legacyFile));
+            if ($legacySecret !== '') {
+                $this->persistPluginDbField('altchaSecret', $legacySecret);
+                @unlink($legacyFile);
+                return;
             }
         }
 
-        $secret = bin2hex(random_bytes(32));
-        file_put_contents($file, $secret);
-        return $secret;
+        // Première installation : génère et persiste une nouvelle clé.
+        $this->persistPluginDbField('altchaSecret', bin2hex(random_bytes(32)));
+    }
+
+    private function getAltchaSecret(): string
+    {
+        $db = $this->loadPluginDbFromDisk();
+        if (!empty($db['altchaSecret'])) {
+            return trim((string) $db['altchaSecret']);
+        }
+
+        // Filet de sécurité : génère une clé temporaire en mémoire si la migration
+        // n'a pas encore eu lieu (ne devrait pas arriver en temps normal).
+        return bin2hex(random_bytes(32));
     }
 
     private function collectSmtpSettingsFromRequest(): array
@@ -767,20 +851,7 @@ class pluginComments extends Plugin {
      */
     private function getSmtpSettingsFromConfig(): array
     {
-        $db = [];
-        $dbFile = PATH_PLUGINS_DATABASES . $this->directoryName . DS . 'db.php';
-        if (file_exists($dbFile)) {
-            $raw = @file_get_contents($dbFile);
-            if ($raw !== false) {
-                $jsonStart = strpos($raw, '{');
-                if ($jsonStart !== false) {
-                    $parsed = json_decode(substr($raw, $jsonStart), true);
-                    if (is_array($parsed)) {
-                        $db = $parsed;
-                    }
-                }
-            }
-        }
+        $db = $this->loadPluginDbFromDisk();
 
         $smtpEncryption = isset($db['smtpEncryption']) ? (string) $db['smtpEncryption'] : 'tls';
         if (!in_array($smtpEncryption, ['none', 'tls', 'ssl'], true)) {
