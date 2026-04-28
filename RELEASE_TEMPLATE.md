@@ -1,20 +1,20 @@
-# Release v1.2.1
+# Release v1.3.1
 
 ## FR - Resume
 
-- Correction de la persistance runtime des reglages (`rateLimitSeconds`, `commentsPerPage`) pour appliquer les valeurs du back-office.
-- Correction de compatibilite pour les environnements sans extension `mbstring`.
-- Ajout d'une couche i18n complete: anglais par defaut, francais selon la langue du site.
-- Correction de la detection de langue Bludit avec fallbacks robustes.
-- Filtrage de l'onglet moderation: seules les pages avec commentaires actives sont affichees.
+- Renforcement de la securite des actions admin AJAX avec validation CSRF.
+- Securisation de la redirection front apres soumission de commentaire (protection open redirect).
+- Alignement des reglages runtime utilises pendant `init()` pour la soumission front.
+- Finalisation de l'i18n sur les textes restants en dur dans les vues (badge publie, date, info-bulle Markdown).
+- Mise a jour de la documentation de release.
 
 ## EN - Summary
 
-- Fixed runtime settings persistence (`rateLimitSeconds`, `commentsPerPage`) so back-office values are applied correctly.
-- Added compatibility fallback for environments without `mbstring`.
-- Added complete i18n layer: English default, French override based on site language.
-- Improved Bludit locale detection with robust fallbacks.
-- Updated moderation tab filtering to show only pages with comments enabled.
+- Hardened admin AJAX actions with CSRF validation.
+- Secured front redirect after comment submission (open redirect protection).
+- Aligned runtime settings reads used during `init()` for front comment submission.
+- Finalized i18n on remaining hardcoded view strings (published badge, date separator, Markdown tooltip).
+- Updated release documentation template.
 
 ## Upgrade notes
 

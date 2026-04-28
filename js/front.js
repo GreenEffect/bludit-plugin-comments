@@ -43,6 +43,30 @@
     }
   }
 
+  /* ── Toggle notification email ──────────────── */
+  var notifyInput = document.getElementById('blc-notify');
+  var emailFieldWrapper = document.getElementById('blc-email-field-wrapper');
+  var emailInput = document.getElementById('blc-email');
+
+  function updateEmailFieldVisibility() {
+    if (!notifyInput || !emailFieldWrapper || !emailInput) {
+      return;
+    }
+
+    var shouldShow = notifyInput.checked;
+    emailFieldWrapper.style.display = shouldShow ? '' : 'none';
+    emailInput.disabled = !shouldShow;
+
+    if (!shouldShow) {
+      emailInput.value = '';
+    }
+  }
+
+  if (notifyInput && emailFieldWrapper && emailInput) {
+    notifyInput.addEventListener('change', updateEmailFieldVisibility);
+    updateEmailFieldVisibility();
+  }
+
   function setupCommentsPagination() {
     var commentsSection = document.getElementById('comments');
     var list = document.querySelector('.blc-front__list');

@@ -26,7 +26,10 @@
     <!-- ── Liste des commentaires ─────────────── -->
     <?php if (!empty($approvedComments)): ?>
     <div class="blc-front__list" aria-live="polite">
-        <?php foreach (array_reverse($approvedComments) as $comment): ?>
+        <?php
+            $orderedComments = ($commentOrder === 'asc') ? $approvedComments : array_reverse($approvedComments);
+        ?>
+        <?php foreach ($orderedComments as $comment): ?>
         <article class="blc-front__comment">
             <header class="blc-front__comment-header">
                 <span class="blc-front__author">
@@ -36,7 +39,7 @@
                       datetime="<?php echo htmlspecialchars($comment['date'], ENT_QUOTES, 'UTF-8'); ?>">
                     <?php
                         $ts = strtotime($comment['date']);
-                        echo date('d/m/Y', $ts) . ' à ' . date('H\hi', $ts);
+                        echo date('d/m/Y', $ts) . ' ' . $plugin->t('front_date_separator') . ' ' . date('H\hi', $ts);
                     ?>
                 </time>
             </header>
@@ -76,10 +79,34 @@
                        placeholder="<?php echo htmlspecialchars($plugin->t('front_placeholder_author'), ENT_QUOTES, 'UTF-8'); ?>">
             </div>
 
+            <?php if (!empty($smtpEnabled)): ?>
+            <div class="blc-front__field">
+                <label for="blc-notify" class="blc-front__checkbox-label confirm__sending">
+                    <input type="checkbox"
+                           id="blc-notify"
+                           name="comment_notify"
+                           value="1">
+                    <?php echo htmlspecialchars($plugin->t('front_label_email_optional'), ENT_QUOTES, 'UTF-8'); ?>
+                </label>
+            </div>
+
+            <div class="blc-front__field" id="blc-email-field-wrapper" style="display:none;">
+                <label for="blc-email">
+                    <?php echo htmlspecialchars($plugin->t('front_label_email_field'), ENT_QUOTES, 'UTF-8'); ?>
+                </label>
+                <input type="email"
+                       id="blc-email"
+                       name="comment_email"
+                       maxlength="255"
+                       autocomplete="email"
+                       placeholder="<?php echo htmlspecialchars($plugin->t('front_placeholder_email_optional'), ENT_QUOTES, 'UTF-8'); ?>">
+            </div>
+            <?php endif; ?>
+
             <div class="blc-front__field">
                 <label for="blc-content">
                     <?php echo htmlspecialchars($plugin->t('front_label_comment'), ENT_QUOTES, 'UTF-8'); ?> <span class="blc-required" aria-hidden="true">*</span>
-                    <span class="blc-md-hint" title="Markdown supporté">
+                    <span class="blc-md-hint" title="<?php echo htmlspecialchars($plugin->t('front_markdown_hint_title'), ENT_QUOTES, 'UTF-8'); ?>">
                         <code>**gras**</code> &nbsp;
                         <code>*italique*</code> &nbsp;
                         <code>`code`</code>

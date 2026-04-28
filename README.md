@@ -1,12 +1,12 @@
 # Bludit Plugin Comments
 
-![Version](https://img.shields.io/badge/version-1.2.1-blue)
+![Version](https://img.shields.io/badge/version-1.3.1-blue)
 ![Bludit](https://img.shields.io/badge/Bludit-3.x-5b32a3)
 ![License](https://img.shields.io/badge/license-CC%20BY--SA%204.0-lightgrey)
 
-FR: Plugin de commentaires pour Bludit 3.x avec moderation, anti-spam ALTCHA, protection CSRF, validation de longueur, moderation et pagination.
+FR: Plugin de commentaires pour Bludit 3.x avec moderation, anti-spam ALTCHA, protection CSRF, validation de longueur, moderation, pagination, notifications email et ordre de tri configurable.
 
-EN: Comment plugin for Bludit 3.x with ALTCHA anti-spam, CSRF protection, length validation, moderation, and pagination.
+EN: Comment plugin for Bludit 3.x with ALTCHA anti-spam, CSRF protection, length validation, moderation, pagination, email notifications, and configurable comment ordering.
 
 ![Capture d'écran de l'application](screenshot.png)
 
@@ -15,9 +15,13 @@ EN: Comment plugin for Bludit 3.x with ALTCHA anti-spam, CSRF protection, length
 - Activation/desactivation des commentaires par page (configuration plugin ou editeur de page).
 - Moderation des commentaires (en attente, publication, suppression, purge).
 - Protection CSRF pour le formulaire front.
-- Verification anti-spam avec ALTCHA.
+- Verification anti-spam avec ALTCHA avec selection d'algorithmes (SHA-256, SHA-384, SHA-512).
 - Limitation de frequence configurable (`Delai entre deux commentaires (secondes)`).
 - Pagination front configurable (`Commentaires affiches par page`).
+- **Ordre d'affichage des commentaires configurable** (ascendant/descendant).
+- **Notifications email** pour les reponses aux commentaires (optionnel).
+- **Badge unread** affichant le nombre de commentaires en attente de moderation.
+- **Alerte de mise a jour disponible** dans les parametres.
 - Stockage JSON dans `bl-content/databases/bl-plugin-comments/`.
 
 ## EN - Features
@@ -25,9 +29,13 @@ EN: Comment plugin for Bludit 3.x with ALTCHA anti-spam, CSRF protection, length
 - Enable/disable comments per page (plugin settings or page editor).
 - Comment moderation workflow (pending, approve, delete, clear).
 - CSRF protection for front-end submission.
-- ALTCHA anti-spam verification.
+- ALTCHA anti-spam verification with algorithm selection (SHA-256, SHA-384, SHA-512).
 - Configurable rate limiting (`Delay between two comments (seconds)`).
 - Configurable front pagination (`Comments displayed per page`).
+- **Configurable comment ordering** (ascending/descending).
+- **Email notifications** for comment replies (optional).
+- **Unread badge** showing pending comment count.
+- **Update availability alert** in settings.
 - JSON file-based storage in `bl-content/databases/bl-plugin-comments/`.
 
 ## FR - Installation

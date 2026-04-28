@@ -4,8 +4,8 @@
     "author":      "Green Effect",
     "email":       "contact@green-effect.fr",
     "website":     "https://www.green-effect.fr",
-    "version":     "1.2.1",
-    "releaseDate": "2026-04-17",
+    "version":     "1.3.1",
+    "releaseDate": "2026-04-28",
     "license":     "CC BY-SA 4.0",
     "compatible":  "3.x",
     "notes":       "Système de commentaires file-based avec modération et CSRF."

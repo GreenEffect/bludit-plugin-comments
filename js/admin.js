@@ -2,13 +2,18 @@
 (function () {
   'use strict';
   var adminRoot = document.getElementById('blc-admin-root');
+  var editorPanelNode = document.getElementById('blc-editor-panel');
+  var csrfToken = (adminRoot && adminRoot.dataset.csrfToken)
+    || (editorPanelNode && editorPanelNode.dataset.csrfToken)
+    || '';
   var I18N = {
     enabled: (adminRoot && adminRoot.dataset.labelEnabled) || 'Enabled',
     disabled: (adminRoot && adminRoot.dataset.labelDisabled) || 'Disabled',
     errorAction: (adminRoot && adminRoot.dataset.errorAction) || 'Error while processing action. Please try again.',
     savingOk: (adminRoot && adminRoot.dataset.savingOk) || 'Saved',
     savingError: (adminRoot && adminRoot.dataset.savingError) || 'Error',
-    savingNetworkError: (adminRoot && adminRoot.dataset.savingNetworkError) || 'Network error'
+    savingNetworkError: (adminRoot && adminRoot.dataset.savingNetworkError) || 'Network error',
+    smtpTestRunning: (adminRoot && adminRoot.dataset.smtpTestRunning) || 'SMTP test in progress...'
   };
 
   /* ═══════════════════════════════════════════════
@@ -233,11 +238,15 @@
     fd.append('bl_comment_action', action);
     fd.append('page_key',   pageKey);
     fd.append('comment_id', commentId);
+    fd.append('csrf_token', csrfToken);
 
-    fetch(window.location.href, { method: 'POST', body: fd })
+    fetch(window.location.href, {
+      method: 'POST',
+      body: fd,
+      headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
       .then(function (r) {
-        // Bludit redirige après l'action — on force un vrai refresh
-        if (r.ok || r.redirected) {
+        if (r.ok) {
           window.location.reload();
         } else {
           alert(I18N.errorAction);
@@ -267,6 +276,7 @@
       fd.append('bl_toggle_comments', '1');
       fd.append('page_key', pageKey);
       fd.append('enabled',  enabled ? '1' : '0');
+      fd.append('csrf_token', csrfToken);
 
       fetch(window.location.href, {
         method:  'POST',
@@ -293,6 +303,69 @@
       });
     });
   });
+
+  /* ═══════════════════════════════════════════════
+     TEST SMTP (onglet Réglages)
+  ══════════════════════════════════════════════════ */
+  var smtpTestBtn = document.getElementById('blc-smtp-test-btn');
+  var smtpTestResult = document.getElementById('blc-smtp-test-result');
+
+  if (smtpTestBtn) {
+    smtpTestBtn.addEventListener('click', function () {
+      var smtpEnabled = document.querySelector('input[name="smtpEnabled"][type="checkbox"]');
+      var smtpHost = document.querySelector('input[name="smtpHost"]');
+      var smtpPort = document.querySelector('input[name="smtpPort"]');
+      var smtpEncryption = document.querySelector('select[name="smtpEncryption"]');
+      var smtpAuth = document.querySelector('input[name="smtpAuth"][type="checkbox"]');
+      var smtpUsername = document.querySelector('input[name="smtpUsername"]');
+      var smtpPassword = document.querySelector('input[name="smtpPassword"]');
+
+      var fd = new FormData();
+      fd.append('bl_comment_action', 'test_smtp');
+      fd.append('csrf_token', csrfToken);
+      fd.append('smtpEnabled', smtpEnabled && smtpEnabled.checked ? '1' : '0');
+      fd.append('smtpHost', smtpHost ? smtpHost.value : '');
+      fd.append('smtpPort', smtpPort ? smtpPort.value : '');
+      fd.append('smtpEncryption', smtpEncryption ? smtpEncryption.value : 'tls');
+      fd.append('smtpAuth', smtpAuth && smtpAuth.checked ? '1' : '0');
+      fd.append('smtpUsername', smtpUsername ? smtpUsername.value : '');
+      fd.append('smtpPassword', smtpPassword ? smtpPassword.value : '');
+
+      var originalText = smtpTestBtn.textContent;
+      smtpTestBtn.disabled = true;
+
+      if (smtpTestResult) {
+        smtpTestResult.textContent = I18N.smtpTestRunning;
+        smtpTestResult.style.color = '';
+      }
+
+      fetch(window.location.href, {
+        method: 'POST',
+        body: fd,
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+      })
+      .then(function (r) {
+        if (!r.ok) {
+          throw new Error('HTTP ' + r.status);
+        }
+        return r.json();
+      })
+      .then(function (data) {
+        if (!smtpTestResult) return;
+        smtpTestResult.textContent = data && data.message ? data.message : I18N.savingError;
+        smtpTestResult.style.color = data && data.ok ? '#1f7a1f' : '#a31d1d';
+      })
+      .catch(function () {
+        if (!smtpTestResult) return;
+        smtpTestResult.textContent = I18N.savingNetworkError;
+        smtpTestResult.style.color = '#a31d1d';
+      })
+      .finally(function () {
+        smtpTestBtn.disabled = false;
+        smtpTestBtn.textContent = originalText;
+      });
+    });
+  }
 
   /* ═══════════════════════════════════════════════
      ÉDITEUR DE PAGE — panneau comments toggle
@@ -336,6 +409,7 @@
       fd.append('bl_toggle_comments', '1');
       fd.append('page_key', pageKey);
       fd.append('enabled',  enabled ? '1' : '0');
+      fd.append('csrf_token', csrfToken);
 
       fetch(window.location.href, {
         method:  'POST',
