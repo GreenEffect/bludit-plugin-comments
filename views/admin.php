@@ -271,7 +271,9 @@
                        name="minCommentLength"
                        value="<?php echo $minCommentLength; ?>"
                        min="1" max="500">
-                <p class="blc-setting__help">Nombre de caractères minimum.</p>
+                <p class="blc-setting__help">
+                    <?php echo htmlspecialchars($plugin->t('setting_min_char_length'), ENT_QUOTES, 'UTF-8'); ?>
+                </p>
             </div>
 
             <div class="blc-setting">
@@ -283,7 +285,9 @@
                        name="maxCommentLength"
                        value="<?php echo $maxCommentLength; ?>"
                        min="50" max="10000">
-                <p class="blc-setting__help">Nombre de caractères maximum.</p>
+                <p class="blc-setting__help">
+                    <?php echo htmlspecialchars($plugin->t('setting_max_char_length'), ENT_QUOTES, 'UTF-8'); ?>
+                </p>
             </div>
 
             <div class="blc-setting">

@@ -31,6 +31,8 @@
         "setting_require_approval_help": "New comments require validation.",
         "setting_min_comment_length": "Minimum comment length",
         "setting_max_comment_length": "Maximum comment length",
+        "setting_min_char_length": "Minimum number of characters.",
+        "setting_max_char_length": "Maximum number of characters.",
         "setting_rate_limit": "Delay between two comments (seconds)",
         "setting_rate_limit_help": "IP cooldown after a comment. 0 = disabled.",
         "setting_comments_per_page": "Comments displayed per page",

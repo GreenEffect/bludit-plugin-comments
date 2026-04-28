@@ -31,6 +31,8 @@
         "setting_require_approval_help": "Nové komentáře vyžadují schválení.",
         "setting_min_comment_length": "Minimální délka komentáře",
         "setting_max_comment_length": "Maximální délka komentáře",
+        "setting_min_char_length": "Minimální počet znaků.",
+        "setting_max_char_length": "Maximální počet znaků.",
         "setting_rate_limit": "Prodleva mezi dvěma komentáři (sekundy)",
         "setting_rate_limit_help": "Časový limit pro IP po odeslání komentáře. 0 = vypnuto.",
         "setting_comments_per_page": "Počet komentářů na stránku",
