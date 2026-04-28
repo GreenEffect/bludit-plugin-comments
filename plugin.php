@@ -1536,7 +1536,7 @@ class pluginComments extends Plugin {
 
     public function siteHead(): string
     {
-        $url = HTML_PATH_PLUGINS . 'bl-plugin-comments/css/front.css';
+        $url = HTML_PATH_PLUGINS . $this->directoryName() . '/css/front.css';
         return '<link rel="stylesheet" href="' . $url . '">' . "\n";
     }
 
@@ -1570,7 +1570,7 @@ class pluginComments extends Plugin {
         }
         $maxLen           = (int)  $this->getValue('maxCommentLength');
         $smtpEnabled      = (bool) $this->getValue('smtpEnabled');
-        $pluginUrl        = HTML_PATH_PLUGINS . 'bl-plugin-comments/';
+        $pluginUrl        = HTML_PATH_PLUGINS . $this->directoryName() . '/';
         $plugin           = $this;
 
         ob_start();
@@ -1595,8 +1595,8 @@ class pluginComments extends Plugin {
 
     public function adminHead(): string
     {
-        $cssUrl = HTML_PATH_PLUGINS . 'bl-plugin-comments/css/admin.css';
-        $jsUrl  = HTML_PATH_PLUGINS . 'bl-plugin-comments/js/admin.js';
+        $cssUrl = HTML_PATH_PLUGINS . $this->directoryName() . '/css/admin.css';
+        $jsUrl  = HTML_PATH_PLUGINS . $this->directoryName() . '/js/admin.js';
         return '<link rel="stylesheet" href="' . $cssUrl . '">' . "\n"
              . '<script src="' . $jsUrl . '" defer></script>' . "\n";
     }
