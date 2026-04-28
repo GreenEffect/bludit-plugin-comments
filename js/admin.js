@@ -2,6 +2,10 @@
 (function () {
   'use strict';
   var adminRoot = document.getElementById('blc-admin-root');
+  var editorPanelNode = document.getElementById('blc-editor-panel');
+  var csrfToken = (adminRoot && adminRoot.dataset.csrfToken)
+    || (editorPanelNode && editorPanelNode.dataset.csrfToken)
+    || '';
   var I18N = {
     enabled: (adminRoot && adminRoot.dataset.labelEnabled) || 'Enabled',
     disabled: (adminRoot && adminRoot.dataset.labelDisabled) || 'Disabled',
@@ -234,6 +238,7 @@
     fd.append('bl_comment_action', action);
     fd.append('page_key',   pageKey);
     fd.append('comment_id', commentId);
+    fd.append('csrf_token', csrfToken);
 
     fetch(window.location.href, {
       method: 'POST',
@@ -271,6 +276,7 @@
       fd.append('bl_toggle_comments', '1');
       fd.append('page_key', pageKey);
       fd.append('enabled',  enabled ? '1' : '0');
+      fd.append('csrf_token', csrfToken);
 
       fetch(window.location.href, {
         method:  'POST',
@@ -316,6 +322,7 @@
 
       var fd = new FormData();
       fd.append('bl_comment_action', 'test_smtp');
+      fd.append('csrf_token', csrfToken);
       fd.append('smtpEnabled', smtpEnabled && smtpEnabled.checked ? '1' : '0');
       fd.append('smtpHost', smtpHost ? smtpHost.value : '');
       fd.append('smtpPort', smtpPort ? smtpPort.value : '');
@@ -402,6 +409,7 @@
       fd.append('bl_toggle_comments', '1');
       fd.append('page_key', pageKey);
       fd.append('enabled',  enabled ? '1' : '0');
+      fd.append('csrf_token', csrfToken);
 
       fetch(window.location.href, {
         method:  'POST',

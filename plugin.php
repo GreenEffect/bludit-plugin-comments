@@ -292,11 +292,17 @@ class pluginComments extends Plugin {
 
         // ── Actions admin ──────────────────────────
         if (!empty($_POST['bl_comment_action']) && $this->adminIsLogged()) {
+            if (!$this->validateCsrf((string) ($_POST['csrf_token'] ?? ''))) {
+                $this->rejectAdminCsrfRequest();
+            }
             $this->processAdminAction();
         }
 
         // ── Toggle commentaires (AJAX éditeur) ─────
         if (!empty($_POST['bl_toggle_comments']) && $this->adminIsLogged()) {
+            if (!$this->validateCsrf((string) ($_POST['csrf_token'] ?? ''))) {
+                $this->rejectAdminCsrfRequest();
+            }
             $key     = $this->cleanKey($_POST['page_key'] ?? '');
             $enabled = !empty($_POST['enabled']);
             $this->setPageCommentsEnabled($key, $enabled);
@@ -473,6 +479,22 @@ class pluginComments extends Plugin {
         $this->startSession();
         return !empty($_SESSION['bl_comments_csrf'])
             && hash_equals($_SESSION['bl_comments_csrf'], $token);
+    }
+
+    private function rejectAdminCsrfRequest(): void
+    {
+        if (!empty($_SERVER['HTTP_X_REQUESTED_WITH'])) {
+            http_response_code(403);
+            header('Content-Type: application/json; charset=UTF-8');
+            echo json_encode([
+                'ok' => false,
+                'message' => $this->t('flash_csrf_error'),
+            ]);
+            exit;
+        }
+
+        header('Location: ' . HTML_PATH_ADMIN_ROOT . 'configure-plugin/pluginComments#tab-settings');
+        exit;
     }
 
     // ──────────────────────────────────────────────
@@ -1612,6 +1634,7 @@ class pluginComments extends Plugin {
 
         $pageKey   = $m[3] ?? '';
         $isEnabled = $pageKey ? $this->isCommentsEnabled($pageKey) : false;
+        $csrfToken = $this->csrfToken();
         $ajaxBase  = HTML_PATH_ROOT;
         $plugin    = $this;
 
@@ -1691,6 +1714,7 @@ class pluginComments extends Plugin {
             $updateAvailable = $this->isNewerVersion($latestVersion, $this->getLocalVersion());
         }
 
+        $csrfToken = $this->csrfToken();
         $plugin = $this;
 
         ob_start();

@@ -1,6 +1,7 @@
 <?php defined('BLUDIT') or die('Bludit CMS.'); ?>
 
 <div class="blc-admin" id="blc-admin-root"
+    data-csrf-token="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>"
      data-label-enabled="<?php echo htmlspecialchars($plugin->t('status_enabled'), ENT_QUOTES, 'UTF-8'); ?>"
      data-label-disabled="<?php echo htmlspecialchars($plugin->t('status_disabled'), ENT_QUOTES, 'UTF-8'); ?>"
      data-error-action="<?php echo htmlspecialchars($plugin->t('admin_error_action'), ENT_QUOTES, 'UTF-8'); ?>"
