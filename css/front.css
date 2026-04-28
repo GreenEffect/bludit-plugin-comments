@@ -276,6 +276,6 @@
 .blc-btn-submit:hover  { background: var(--blc-accent-dark); }
 .blc-btn-submit:active { transform: scale(.98); }
 
-#comments{
+#comments {
     width: 100%;
 }

@@ -26,7 +26,10 @@
     <!-- ── Liste des commentaires ─────────────── -->
     <?php if (!empty($approvedComments)): ?>
     <div class="blc-front__list" aria-live="polite">
-        <?php foreach (array_reverse($approvedComments) as $comment): ?>
+        <?php
+            $orderedComments = ($commentOrder === 'asc') ? $approvedComments : array_reverse($approvedComments);
+        ?>
+        <?php foreach ($orderedComments as $comment): ?>
         <article class="blc-front__comment">
             <header class="blc-front__comment-header">
                 <span class="blc-front__author">

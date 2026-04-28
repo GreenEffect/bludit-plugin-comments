@@ -176,13 +176,28 @@ class pluginComments extends Plugin {
         return (int) $value;
     }
 
+    private function getStringSetting(string $key, string $default): string
+    {
+        $runtime = $this->loadRuntimeSettings();
+        if (array_key_exists($key, $runtime)) {
+            return (string) $runtime[$key];
+        }
+
+        $value = $this->getValue($key);
+        if ($value === null || $value === '') {
+            return $default;
+        }
+
+        return (string) $value;
+    }
+
     private function syncRuntimeSettingsFromAdminPost(): void
     {
         if (!$this->adminIsLogged()) {
             return;
         }
 
-        $settingsKeys = ['requireApproval', 'commentsPerPage', 'minCommentLength', 'maxCommentLength', 'rateLimitSeconds'];
+        $settingsKeys = ['requireApproval', 'commentsPerPage', 'minCommentLength', 'maxCommentLength', 'rateLimitSeconds', 'commentOrder'];
         $hasSettingsPost = false;
         foreach ($settingsKeys as $k) {
             if (array_key_exists($k, $_POST)) {
@@ -204,6 +219,8 @@ class pluginComments extends Plugin {
         $current['minCommentLength'] = max(1, (int) ($_POST['minCommentLength'] ?? 10));
         $current['maxCommentLength'] = max(1, (int) ($_POST['maxCommentLength'] ?? 1000));
         $current['rateLimitSeconds'] = max(0, (int) ($_POST['rateLimitSeconds'] ?? 300));
+        $rawOrder = isset($_POST['commentOrder']) ? (string) $_POST['commentOrder'] : 'desc';
+        $current['commentOrder'] = in_array($rawOrder, ['asc', 'desc'], true) ? $rawOrder : 'desc';
 
         $this->saveRuntimeSettings($current);
 
@@ -232,6 +249,7 @@ class pluginComments extends Plugin {
             'minCommentLength' => 10,
             'maxCommentLength' => 1000,
             'rateLimitSeconds' => 300,
+            'commentOrder'     => 'desc',
             'altchaSecret'     => '',
             'smtpEnabled'      => 0,
             'smtpHost'         => '',
@@ -1532,6 +1550,10 @@ class pluginComments extends Plugin {
         $successMsg       = $this->getFlash('success');
         $errorMsg         = $this->getFlash('error');
         $commentsPerPage  = max(1, $this->getIntSetting('commentsPerPage', 10));
+        $commentOrder     = $this->getStringSetting('commentOrder', 'desc');
+        if (!in_array($commentOrder, ['asc', 'desc'], true)) {
+            $commentOrder = 'desc';
+        }
         $maxLen           = (int)  $this->getValue('maxCommentLength');
         $smtpEnabled      = (bool) $this->getValue('smtpEnabled');
         $pluginUrl        = HTML_PATH_PLUGINS . 'bl-plugin-comments/';
@@ -1639,6 +1661,10 @@ class pluginComments extends Plugin {
         $smtpFromEmail    = (string) $this->getValue('smtpFromEmail');
         $smtpFromName     = (string) $this->getValue('smtpFromName');
         $checkForUpdates  = (bool)   $this->getValue('checkForUpdates');
+        $commentOrder     = $this->getStringSetting('commentOrder', 'desc');
+        if (!in_array($commentOrder, ['asc', 'desc'], true)) {
+            $commentOrder = 'desc';
+        }
 
         $updateAvailable = false;
         $latestVersion   = '';

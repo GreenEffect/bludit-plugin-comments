@@ -324,6 +324,21 @@
             </div>
 
             <div class="blc-setting">
+                <label class="blc-setting__label" for="s-comment-order">
+                    <?php echo htmlspecialchars($plugin->t('setting_comment_order'), ENT_QUOTES, 'UTF-8'); ?>
+                </label>
+                <select id="s-comment-order" name="commentOrder">
+                    <option value="desc" <?php echo $commentOrder === 'desc' ? 'selected' : ''; ?>>
+                        <?php echo htmlspecialchars($plugin->t('setting_comment_order_desc'), ENT_QUOTES, 'UTF-8'); ?>
+                    </option>
+                    <option value="asc" <?php echo $commentOrder === 'asc' ? 'selected' : ''; ?>>
+                        <?php echo htmlspecialchars($plugin->t('setting_comment_order_asc'), ENT_QUOTES, 'UTF-8'); ?>
+                    </option>
+                </select>
+                <p class="blc-setting__help"><?php echo htmlspecialchars($plugin->t('setting_comment_order_help'), ENT_QUOTES, 'UTF-8'); ?></p>
+            </div>
+
+            <div class="blc-setting">
                 <label class="blc-setting__label">
                     <input type="hidden" name="checkForUpdates" value="0">
                     <input type="checkbox"
