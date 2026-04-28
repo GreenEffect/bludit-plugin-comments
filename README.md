@@ -1,6 +1,6 @@
 # Bludit Plugin Comments
 
-![Version](https://img.shields.io/badge/version-1.3.0-blue)
+![Version](https://img.shields.io/badge/version-1.3.1-blue)
 ![Bludit](https://img.shields.io/badge/Bludit-3.x-5b32a3)
 ![License](https://img.shields.io/badge/license-CC%20BY--SA%204.0-lightgrey)
 
