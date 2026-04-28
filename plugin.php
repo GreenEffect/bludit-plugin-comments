@@ -29,6 +29,16 @@ class pluginComments extends Plugin {
         return function_exists('mb_strpos') ? mb_strpos($haystack, $needle) : strpos($haystack, $needle);
     }
 
+    private function normalizeEmail(string $value): string
+    {
+        $email = trim($this->safeToLower($value));
+        if ($email === '') {
+            return '';
+        }
+
+        return filter_var($email, FILTER_VALIDATE_EMAIL) ? $email : '';
+    }
+
     private function currentLocale(): string
     {
         $candidates = [];
@@ -222,6 +232,15 @@ class pluginComments extends Plugin {
             'minCommentLength' => 10,
             'maxCommentLength' => 1000,
             'rateLimitSeconds' => 300,
+            'smtpEnabled'      => 0,
+            'smtpHost'         => '',
+            'smtpPort'         => 587,
+            'smtpEncryption'   => 'tls',
+            'smtpAuth'         => 1,
+            'smtpUsername'     => '',
+            'smtpPassword'     => '',
+            'smtpFromEmail'    => '',
+            'smtpFromName'     => '',
         ];
 
         // Endpoint de challenge ALTCHA (standalone, servi par le plugin)
@@ -494,6 +513,10 @@ class pluginComments extends Plugin {
 
         $author  = trim($_POST['comment_author']  ?? '');
         $content = trim($_POST['comment_content'] ?? '');
+        $emailInput = $this->normalizeEmail((string) ($_POST['comment_email'] ?? ''));
+        $notifyOptIn = !empty($_POST['comment_notify']);
+        $email = $notifyOptIn ? $emailInput : '';
+        $notifyStored = ($notifyOptIn && $email !== '') ? 1 : 0;
 
         if (empty($author) || empty($content)) {
             $this->setFlash('error', $this->t('flash_author_content_required'));
@@ -528,6 +551,8 @@ class pluginComments extends Plugin {
         $comment = [
             'id'        => uniqid('c', true),
             'author'    => $author,
+            'email'     => $email,
+            'notify'    => $notifyStored,
             'content'   => $content,
             'date'      => date('Y-m-d H:i:s'),
             'timestamp' => time(),
@@ -639,6 +664,520 @@ class pluginComments extends Plugin {
         return $secret;
     }
 
+    private function collectSmtpSettingsFromRequest(): array
+    {
+        $smtpEnabled = array_key_exists('smtpEnabled', $_POST)
+            ? !empty($_POST['smtpEnabled'])
+            : (bool) $this->getValue('smtpEnabled');
+
+        $smtpAuth = array_key_exists('smtpAuth', $_POST)
+            ? !empty($_POST['smtpAuth'])
+            : (bool) $this->getValue('smtpAuth');
+
+        $smtp = [
+            'enabled'    => $smtpEnabled,
+            'host'       => trim((string) ($_POST['smtpHost'] ?? $this->getValue('smtpHost'))),
+            'port'       => max(1, (int) ($_POST['smtpPort'] ?? $this->getValue('smtpPort'))),
+            'encryption' => (string) ($_POST['smtpEncryption'] ?? $this->getValue('smtpEncryption')),
+            'auth'       => $smtpAuth,
+            'username'   => (string) ($_POST['smtpUsername'] ?? $this->getValue('smtpUsername')),
+            'password'   => (string) ($_POST['smtpPassword'] ?? $this->getValue('smtpPassword')),
+            'fromEmail'  => $this->normalizeEmail((string) ($_POST['smtpFromEmail'] ?? $this->getValue('smtpFromEmail'))),
+            'fromName'   => trim((string) ($_POST['smtpFromName'] ?? $this->getValue('smtpFromName'))),
+        ];
+
+        if (!in_array($smtp['encryption'], ['none', 'tls', 'ssl'], true)) {
+            $smtp['encryption'] = 'tls';
+        }
+
+        return $smtp;
+    }
+
+    /**
+     * Lit les parametres SMTP directement depuis db.php sur le disque.
+     *
+     * getValue() lit $this->db, qui n'est rempli par Bludit QU'APRES init().
+     * Or processAdminAction() est appele depuis init() donc $this->db est encore vide.
+     * On lit le fichier JSON directement pour contourner ce probleme.
+     */
+    private function getSmtpSettingsFromConfig(): array
+    {
+        $db = [];
+        $dbFile = PATH_PLUGINS_DATABASES . $this->directoryName . DS . 'db.php';
+        if (file_exists($dbFile)) {
+            $raw = @file_get_contents($dbFile);
+            if ($raw !== false) {
+                $jsonStart = strpos($raw, '{');
+                if ($jsonStart !== false) {
+                    $parsed = json_decode(substr($raw, $jsonStart), true);
+                    if (is_array($parsed)) {
+                        $db = $parsed;
+                    }
+                }
+            }
+        }
+
+        $smtpEncryption = isset($db['smtpEncryption']) ? (string) $db['smtpEncryption'] : 'tls';
+        if (!in_array($smtpEncryption, ['none', 'tls', 'ssl'], true)) {
+            $smtpEncryption = 'tls';
+        }
+
+        return [
+            'enabled'    => !empty($db['smtpEnabled']),
+            'host'       => isset($db['smtpHost']) ? trim((string) $db['smtpHost']) : '',
+            'port'       => isset($db['smtpPort']) ? max(1, (int) $db['smtpPort']) : 587,
+            'encryption' => $smtpEncryption,
+            'auth'       => !empty($db['smtpAuth']),
+            'username'   => isset($db['smtpUsername']) ? (string) $db['smtpUsername'] : '',
+            'password'   => isset($db['smtpPassword']) ? (string) $db['smtpPassword'] : '',
+            'fromEmail'  => $this->normalizeEmail(isset($db['smtpFromEmail']) ? (string) $db['smtpFromEmail'] : ''),
+            'fromName'   => isset($db['smtpFromName']) ? trim((string) $db['smtpFromName']) : '',
+        ];
+    }
+
+    private function canSendSmtpNotification(array $smtp): bool
+    {
+        if (empty($smtp['enabled'])) {
+            return false;
+        }
+
+        if (empty($smtp['host']) || empty($smtp['port']) || empty($smtp['fromEmail'])) {
+            return false;
+        }
+
+        if (!empty($smtp['auth']) && (empty($smtp['username']) || empty($smtp['password']))) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private function encodeHeaderValue(string $value): string
+    {
+        $clean = str_replace(["\r", "\n"], '', $value);
+        if ($clean === '') {
+            return '';
+        }
+
+        if (function_exists('mb_encode_mimeheader')) {
+            return mb_encode_mimeheader($clean, 'UTF-8', 'B', "\r\n");
+        }
+
+        return '=?UTF-8?B?' . base64_encode($clean) . '?=';
+    }
+
+    private function smtpConnect(array $smtp, &$socket, &$errorDetail): bool
+    {
+        $socket = null;
+        $errorDetail = '';
+
+        $remoteHost = $smtp['encryption'] === 'ssl'
+            ? 'ssl://' . $smtp['host']
+            : $smtp['host'];
+
+        $errno = 0;
+        $errstr = '';
+        $socket = @stream_socket_client(
+            $remoteHost . ':' . (int) $smtp['port'],
+            $errno,
+            $errstr,
+            10,
+            STREAM_CLIENT_CONNECT
+        );
+
+        if ($socket === false) {
+            $errorDetail = trim($errstr) !== '' ? $errstr : ('Error ' . $errno);
+            return false;
+        }
+
+        stream_set_timeout($socket, 10);
+
+        $greeting = $this->smtpReadResponse($socket);
+        if ($greeting['code'] !== 220) {
+            $errorDetail = $greeting['raw'] !== '' ? $greeting['raw'] : 'Invalid SMTP greeting';
+            if (is_resource($socket)) {
+                fclose($socket);
+            }
+            return false;
+        }
+
+        $helo = $this->smtpSendCommand($socket, 'EHLO localhost', [250]);
+        if (!$helo['ok']) {
+            $errorDetail = $helo['raw'] !== '' ? $helo['raw'] : 'EHLO failed';
+            if (is_resource($socket)) {
+                fclose($socket);
+            }
+            return false;
+        }
+
+        if ($smtp['encryption'] === 'tls') {
+            $startTls = $this->smtpSendCommand($socket, 'STARTTLS', [220]);
+            if (!$startTls['ok']) {
+                $errorDetail = $startTls['raw'] !== '' ? $startTls['raw'] : 'STARTTLS failed';
+                if (is_resource($socket)) {
+                    fclose($socket);
+                }
+                return false;
+            }
+
+            $crypto = @stream_socket_enable_crypto(
+                $socket,
+                true,
+                defined('STREAM_CRYPTO_METHOD_TLS_CLIENT')
+                    ? STREAM_CRYPTO_METHOD_TLS_CLIENT
+                    : STREAM_CRYPTO_METHOD_SSLv23_CLIENT
+            );
+
+            if (!$crypto) {
+                $errorDetail = 'TLS negotiation failed';
+                if (is_resource($socket)) {
+                    fclose($socket);
+                }
+                return false;
+            }
+
+            $heloAfterTls = $this->smtpSendCommand($socket, 'EHLO localhost', [250]);
+            if (!$heloAfterTls['ok']) {
+                $errorDetail = $heloAfterTls['raw'] !== '' ? $heloAfterTls['raw'] : 'EHLO after TLS failed';
+                if (is_resource($socket)) {
+                    fclose($socket);
+                }
+                return false;
+            }
+        }
+
+        if (!empty($smtp['auth'])) {
+            $authCmd = $this->smtpSendCommand($socket, 'AUTH LOGIN', [334]);
+            if (!$authCmd['ok']) {
+                if (is_resource($socket)) {
+                    fclose($socket);
+                }
+                return false;
+            }
+
+            $authUser = $this->smtpSendCommand($socket, base64_encode((string) $smtp['username']), [334]);
+            if (!$authUser['ok']) {
+                $errorDetail = $authUser['raw'] !== '' ? $authUser['raw'] : 'SMTP username rejected';
+                if (is_resource($socket)) {
+                    fclose($socket);
+                }
+                return false;
+            }
+
+            $authPass = $this->smtpSendCommand($socket, base64_encode((string) $smtp['password']), [235]);
+            if (!$authPass['ok']) {
+                $errorDetail = $authPass['raw'] !== '' ? $authPass['raw'] : 'SMTP password rejected';
+                if (is_resource($socket)) {
+                    fclose($socket);
+                }
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function sendSmtpMail(array $smtp, string $toEmail, string $subject, string $body, ?string &$debug = null): bool
+    {
+        $debug = '';
+        $recipient = $this->normalizeEmail($toEmail);
+        if ($recipient === '') {
+            $debug = 'Invalid recipient email.';
+            return false;
+        }
+
+        $socket = null;
+        $errorDetail = '';
+        if (!$this->smtpConnect($smtp, $socket, $errorDetail)) {
+            $debug = 'SMTP connect failed: ' . $errorDetail;
+            return false;
+        }
+
+        if (!is_resource($socket)) {
+            $debug = 'SMTP connect returned no socket resource.';
+            return false;
+        }
+
+        $mailFrom = $this->smtpSendCommand($socket, 'MAIL FROM:<' . $smtp['fromEmail'] . '>', [250]);
+        if (!$mailFrom['ok']) {
+            $debug = 'MAIL FROM rejected: ' . ($mailFrom['raw'] !== '' ? $mailFrom['raw'] : 'Unknown SMTP error');
+            fclose($socket);
+            return false;
+        }
+
+        $rcptTo = $this->smtpSendCommand($socket, 'RCPT TO:<' . $recipient . '>', [250, 251]);
+        if (!$rcptTo['ok']) {
+            $debug = 'RCPT TO rejected: ' . ($rcptTo['raw'] !== '' ? $rcptTo['raw'] : 'Unknown SMTP error');
+            fclose($socket);
+            return false;
+        }
+
+        $dataStart = $this->smtpSendCommand($socket, 'DATA', [354]);
+        if (!$dataStart['ok']) {
+            $debug = 'DATA command rejected: ' . ($dataStart['raw'] !== '' ? $dataStart['raw'] : 'Unknown SMTP error');
+            fclose($socket);
+            return false;
+        }
+
+        $fromName = trim((string) ($smtp['fromName'] ?? ''));
+        $fromHeader = $smtp['fromEmail'];
+        if ($fromName !== '') {
+            $fromHeader = $this->encodeHeaderValue($fromName) . ' <' . $smtp['fromEmail'] . '>';
+        }
+
+        $subjectHeader = $this->encodeHeaderValue($subject);
+        $headers = [
+            'Date: ' . date('r'),
+            'From: ' . $fromHeader,
+            'To: <' . $recipient . '>',
+            'Subject: ' . $subjectHeader,
+            'MIME-Version: 1.0',
+            'Content-Type: text/plain; charset=UTF-8',
+            'Content-Transfer-Encoding: 8bit',
+        ];
+
+        $bodyNormalized = str_replace(["\r\n", "\r"], "\n", $body);
+        $bodyNormalized = str_replace("\n", "\r\n", $bodyNormalized);
+        $bodyNormalized = preg_replace('/(^|\r\n)\./', '$1..', $bodyNormalized);
+
+        $payload = implode("\r\n", $headers) . "\r\n\r\n" . $bodyNormalized . "\r\n.\r\n";
+        fwrite($socket, $payload);
+
+        $dataEnd = $this->smtpReadResponse($socket);
+        $this->smtpSendCommand($socket, 'QUIT', [221, 250]);
+        fclose($socket);
+
+        $ok = in_array($dataEnd['code'], [250], true);
+        $debug = $ok
+            ? 'SMTP accepted message.'
+            : ('SMTP message rejected: ' . ($dataEnd['raw'] !== '' ? $dataEnd['raw'] : ('Code ' . $dataEnd['code'])));
+
+        return $ok;
+    }
+
+    private function notifyPreviousCommenters(string $pageKey, array $newComment, array $approvedBefore): void
+    {
+        $smtp = $this->getSmtpSettingsFromConfig();
+
+        if (!$this->canSendSmtpNotification($smtp)) {
+            return;
+        }
+
+        $newCommentEmail = $this->normalizeEmail((string) ($newComment['email'] ?? ''));
+        $newCommentNotify = !empty($newComment['notify']);
+        $recipients = [];
+
+        // Notifier aussi l'auteur du commentaire nouvellement publie s'il est abonne.
+        if ($newCommentNotify && $newCommentEmail !== '') {
+            $recipients[$newCommentEmail] = true;
+        }
+
+        foreach ($approvedBefore as $existing) {
+            $email = $this->normalizeEmail((string) ($existing['email'] ?? ''));
+            if ($email === '') {
+                continue;
+            }
+            if (empty($existing['notify'])) {
+                continue;
+            }
+            $recipients[$email] = true;
+        }
+
+        if (empty($recipients)) {
+            return;
+        }
+
+        $allPages = $this->getBluditPages();
+        $pageTitle = isset($allPages[$pageKey]['title']) ? (string) $allPages[$pageKey]['title'] : (string) $pageKey;
+        $author = trim((string) ($newComment['author'] ?? ''));
+        $content = trim((string) ($newComment['content'] ?? ''));
+        $content = preg_replace('/\s+/u', ' ', $content);
+        if ($this->safeLength($content) > 220) {
+            $content = rtrim(substr($content, 0, 217)) . '...';
+        }
+
+        $subject = $this->t('notification_new_comment_subject', ['page' => $pageTitle]);
+        $body = $this->t('notification_new_comment_body', [
+            'page' => $pageTitle,
+            'author' => $author !== '' ? $author : $this->t('notification_author_fallback'),
+            'content' => $content,
+        ]);
+
+        foreach (array_keys($recipients) as $recipientEmail) {
+            $recipientDebug = '';
+            $this->sendSmtpMail($smtp, $recipientEmail, $subject, $body, $recipientDebug);
+        }
+    }
+
+    private function smtpReadResponse($socket): array
+    {
+        $raw = '';
+        $code = 0;
+
+        while (($line = fgets($socket, 515)) !== false) {
+            $raw .= $line;
+
+            if (preg_match('/^(\d{3})([ \-])/', $line, $m)) {
+                $code = (int) $m[1];
+                if ($m[2] === ' ') {
+                    break;
+                }
+            }
+
+            if (strlen($raw) > 8192) {
+                break;
+            }
+        }
+
+        return ['code' => $code, 'raw' => trim($raw)];
+    }
+
+    private function smtpSendCommand($socket, string $command, array $expectedCodes): array
+    {
+        fwrite($socket, $command . "\r\n");
+        $response = $this->smtpReadResponse($socket);
+
+        return [
+            'ok' => in_array($response['code'], $expectedCodes, true),
+            'code' => $response['code'],
+            'raw' => $response['raw'],
+        ];
+    }
+
+    private function testSmtpConnection(array $smtp): array
+    {
+        if (empty($smtp['enabled'])) {
+            return ['ok' => false, 'message' => $this->t('smtp_test_disabled')];
+        }
+
+        if ($smtp['host'] === '') {
+            return ['ok' => false, 'message' => $this->t('smtp_test_missing_host')];
+        }
+
+        if ((int) $smtp['port'] <= 0) {
+            return ['ok' => false, 'message' => $this->t('smtp_test_missing_port')];
+        }
+
+        if (!empty($smtp['auth']) && trim((string) $smtp['username']) === '') {
+            return ['ok' => false, 'message' => $this->t('smtp_test_missing_username')];
+        }
+
+        if (!empty($smtp['auth']) && (string) $smtp['password'] === '') {
+            return ['ok' => false, 'message' => $this->t('smtp_test_missing_password')];
+        }
+
+        $remoteHost = $smtp['encryption'] === 'ssl'
+            ? 'ssl://' . $smtp['host']
+            : $smtp['host'];
+
+        $errno = 0;
+        $errstr = '';
+        $socket = @stream_socket_client(
+            $remoteHost . ':' . (int) $smtp['port'],
+            $errno,
+            $errstr,
+            10,
+            STREAM_CLIENT_CONNECT
+        );
+
+        if ($socket === false) {
+            return [
+                'ok' => false,
+                'message' => $this->t('smtp_test_connection_failed', ['detail' => trim($errstr) !== '' ? $errstr : ('Error ' . $errno)]),
+            ];
+        }
+
+        stream_set_timeout($socket, 10);
+
+        $greeting = $this->smtpReadResponse($socket);
+        if ($greeting['code'] !== 220) {
+            fclose($socket);
+            return [
+                'ok' => false,
+                'message' => $this->t('smtp_test_connection_failed', ['detail' => $greeting['raw'] !== '' ? $greeting['raw'] : 'Invalid SMTP greeting']),
+            ];
+        }
+
+        $helo = $this->smtpSendCommand($socket, 'EHLO localhost', [250]);
+        if (!$helo['ok']) {
+            fclose($socket);
+            return [
+                'ok' => false,
+                'message' => $this->t('smtp_test_connection_failed', ['detail' => $helo['raw'] !== '' ? $helo['raw'] : 'EHLO failed']),
+            ];
+        }
+
+        if ($smtp['encryption'] === 'tls') {
+            $startTls = $this->smtpSendCommand($socket, 'STARTTLS', [220]);
+            if (!$startTls['ok']) {
+                fclose($socket);
+                return [
+                    'ok' => false,
+                    'message' => $this->t('smtp_test_connection_failed', ['detail' => $startTls['raw'] !== '' ? $startTls['raw'] : 'STARTTLS failed']),
+                ];
+            }
+
+            $crypto = @stream_socket_enable_crypto(
+                $socket,
+                true,
+                defined('STREAM_CRYPTO_METHOD_TLS_CLIENT')
+                    ? STREAM_CRYPTO_METHOD_TLS_CLIENT
+                    : STREAM_CRYPTO_METHOD_SSLv23_CLIENT
+            );
+
+            if (!$crypto) {
+                fclose($socket);
+                return [
+                    'ok' => false,
+                    'message' => $this->t('smtp_test_connection_failed', ['detail' => 'TLS negotiation failed']),
+                ];
+            }
+
+            $heloAfterTls = $this->smtpSendCommand($socket, 'EHLO localhost', [250]);
+            if (!$heloAfterTls['ok']) {
+                fclose($socket);
+                return [
+                    'ok' => false,
+                    'message' => $this->t('smtp_test_connection_failed', ['detail' => $heloAfterTls['raw'] !== '' ? $heloAfterTls['raw'] : 'EHLO after TLS failed']),
+                ];
+            }
+        }
+
+        if (!empty($smtp['auth'])) {
+            $authCmd = $this->smtpSendCommand($socket, 'AUTH LOGIN', [334]);
+            if (!$authCmd['ok']) {
+                fclose($socket);
+                return [
+                    'ok' => false,
+                    'message' => $this->t('smtp_test_connection_failed', ['detail' => $authCmd['raw'] !== '' ? $authCmd['raw'] : 'AUTH LOGIN failed']),
+                ];
+            }
+
+            $authUser = $this->smtpSendCommand($socket, base64_encode((string) $smtp['username']), [334]);
+            if (!$authUser['ok']) {
+                fclose($socket);
+                return [
+                    'ok' => false,
+                    'message' => $this->t('smtp_test_connection_failed', ['detail' => $authUser['raw'] !== '' ? $authUser['raw'] : 'SMTP username rejected']),
+                ];
+            }
+
+            $authPass = $this->smtpSendCommand($socket, base64_encode((string) $smtp['password']), [235]);
+            if (!$authPass['ok']) {
+                fclose($socket);
+                return [
+                    'ok' => false,
+                    'message' => $this->t('smtp_test_connection_failed', ['detail' => $authPass['raw'] !== '' ? $authPass['raw'] : 'SMTP password rejected']),
+                ];
+            }
+        }
+
+        $this->smtpSendCommand($socket, 'QUIT', [221, 250]);
+        fclose($socket);
+
+        return ['ok' => true, 'message' => $this->t('smtp_test_success')];
+    }
+
     // ──────────────────────────────────────────────
     //  TRAITEMENT — ACTIONS ADMIN
     // ──────────────────────────────────────────────
@@ -653,8 +1192,11 @@ class pluginComments extends Plugin {
             case 'approve':
                 $pending  = $this->loadComments($pageKey, 'pending');
                 $approved = $this->loadComments($pageKey, 'approved');
+                $approvedBefore = $approved;
+                $publishedComment = null;
                 foreach ($pending as $i => $c) {
                     if ($c['id'] === $commentId) {
+                        $publishedComment = $c;
                         $approved[] = $c;
                         unset($pending[$i]);
                         break;
@@ -662,6 +1204,9 @@ class pluginComments extends Plugin {
                 }
                 $this->saveComments($pageKey, $pending, 'pending');
                 $this->saveComments($pageKey, $approved, 'approved');
+                if (is_array($publishedComment)) {
+                    $this->notifyPreviousCommenters($pageKey, $publishedComment, $approvedBefore);
+                }
                 break;
 
             case 'delete_pending':
@@ -688,6 +1233,18 @@ class pluginComments extends Plugin {
                 $this->saveComments($pageKey, [], 'pending');
                 $this->saveComments($pageKey, [], 'approved');
                 break;
+
+            case 'test_smtp':
+                $result = $this->testSmtpConnection($this->collectSmtpSettingsFromRequest());
+                header('Content-Type: application/json; charset=UTF-8');
+                echo json_encode($result);
+                exit;
+        }
+
+        if (!empty($_SERVER['HTTP_X_REQUESTED_WITH'])) {
+            header('Content-Type: application/json; charset=UTF-8');
+            echo json_encode(['ok' => true]);
+            exit;
         }
 
         $returnUrl = HTML_PATH_ADMIN_ROOT . 'configure-plugin/pluginComments';
@@ -840,6 +1397,7 @@ class pluginComments extends Plugin {
         $errorMsg         = $this->getFlash('error');
         $commentsPerPage  = max(1, $this->getIntSetting('commentsPerPage', 10));
         $maxLen           = (int)  $this->getValue('maxCommentLength');
+        $smtpEnabled      = (bool) $this->getValue('smtpEnabled');
         $pluginUrl        = HTML_PATH_PLUGINS . 'bl-plugin-comments/';
         $plugin           = $this;
 
@@ -923,6 +1481,18 @@ class pluginComments extends Plugin {
         $minCommentLength = (int)  $this->getValue('minCommentLength');
         $maxCommentLength = (int)  $this->getValue('maxCommentLength');
         $rateLimitSeconds = max(0, $this->getIntSetting('rateLimitSeconds', 300));
+        $smtpEnabled      = (bool) $this->getValue('smtpEnabled');
+        $smtpHost         = (string) $this->getValue('smtpHost');
+        $smtpPort         = max(1, (int) $this->getValue('smtpPort'));
+        $smtpEncryption   = (string) $this->getValue('smtpEncryption');
+        if (!in_array($smtpEncryption, ['none', 'tls', 'ssl'], true)) {
+            $smtpEncryption = 'tls';
+        }
+        $smtpAuth         = (bool) $this->getValue('smtpAuth');
+        $smtpUsername     = (string) $this->getValue('smtpUsername');
+        $smtpPassword     = (string) $this->getValue('smtpPassword');
+        $smtpFromEmail    = (string) $this->getValue('smtpFromEmail');
+        $smtpFromName     = (string) $this->getValue('smtpFromName');
 
         $plugin = $this;
 

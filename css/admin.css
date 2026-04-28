@@ -308,6 +308,8 @@
 .blc-btn--delete-all { background: #dc2626; color: #fff; font-size: .78rem; }
 .blc-btn--danger     { background: #7f1d1d; color: #fff; font-size: .78rem; }
 
+.btn-w100 { width: 100%; }
+
 /* ── Bulk actions ──────────────────────────────────────── */
 .blc-bulk-action {
     margin-top:  .5rem;
@@ -519,7 +521,6 @@
     background:    #fff;
     margin-top:    .5rem;
     display:       block;
-    width:         110px;
 }
 
 .blc-settings-save-hint {

@@ -76,6 +76,30 @@
                        placeholder="<?php echo htmlspecialchars($plugin->t('front_placeholder_author'), ENT_QUOTES, 'UTF-8'); ?>">
             </div>
 
+            <?php if (!empty($smtpEnabled)): ?>
+            <div class="blc-front__field">
+                <label for="blc-notify" class="blc-front__checkbox-label confirm__sending">
+                    <input type="checkbox"
+                           id="blc-notify"
+                           name="comment_notify"
+                           value="1">
+                    <?php echo htmlspecialchars($plugin->t('front_label_email_optional'), ENT_QUOTES, 'UTF-8'); ?>
+                </label>
+            </div>
+
+            <div class="blc-front__field" id="blc-email-field-wrapper" style="display:none;">
+                <label for="blc-email">
+                    <?php echo htmlspecialchars($plugin->t('front_label_email_field'), ENT_QUOTES, 'UTF-8'); ?>
+                </label>
+                <input type="email"
+                       id="blc-email"
+                       name="comment_email"
+                       maxlength="255"
+                       autocomplete="email"
+                       placeholder="<?php echo htmlspecialchars($plugin->t('front_placeholder_email_optional'), ENT_QUOTES, 'UTF-8'); ?>">
+            </div>
+            <?php endif; ?>
+
             <div class="blc-front__field">
                 <label for="blc-content">
                     <?php echo htmlspecialchars($plugin->t('front_label_comment'), ENT_QUOTES, 'UTF-8'); ?> <span class="blc-required" aria-hidden="true">*</span>

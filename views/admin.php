@@ -6,7 +6,8 @@
      data-error-action="<?php echo htmlspecialchars($plugin->t('admin_error_action'), ENT_QUOTES, 'UTF-8'); ?>"
      data-saving-ok="<?php echo htmlspecialchars($plugin->t('admin_saved_ok'), ENT_QUOTES, 'UTF-8'); ?>"
      data-saving-error="<?php echo htmlspecialchars($plugin->t('admin_saved_error'), ENT_QUOTES, 'UTF-8'); ?>"
-     data-saving-network-error="<?php echo htmlspecialchars($plugin->t('admin_saved_network_error'), ENT_QUOTES, 'UTF-8'); ?>">
+     data-saving-network-error="<?php echo htmlspecialchars($plugin->t('admin_saved_network_error'), ENT_QUOTES, 'UTF-8'); ?>"
+     data-smtp-test-running="<?php echo htmlspecialchars($plugin->t('setting_smtp_test_running'), ENT_QUOTES, 'UTF-8'); ?>">
 
     <!-- ── En-tête ────────────────────────────── -->
     <div class="blc-admin-header">
@@ -314,6 +315,124 @@
                 <p class="blc-setting__help"><?php echo htmlspecialchars($plugin->t('setting_comments_per_page_help'), ENT_QUOTES, 'UTF-8'); ?></p>
             </div>
 
+            <div class="blc-setting">
+                <label class="blc-setting__label">
+                    <input type="hidden" name="smtpEnabled" value="0">
+                    <input type="checkbox"
+                           name="smtpEnabled"
+                           value="1"
+                           <?php echo $smtpEnabled ? 'checked' : ''; ?>>
+                    <?php echo htmlspecialchars($plugin->t('setting_smtp_enabled'), ENT_QUOTES, 'UTF-8'); ?>
+                </label>
+                <p class="blc-setting__help"><?php echo htmlspecialchars($plugin->t('setting_smtp_enabled_help'), ENT_QUOTES, 'UTF-8'); ?></p>
+            </div>
+
+            <div class="blc-setting blc-setting--smtp" <?php echo $smtpEnabled ? '' : 'style="display:none;"'; ?>>
+                <label class="blc-setting__label" for="s-smtp-host">
+                    <?php echo htmlspecialchars($plugin->t('setting_smtp_host'), ENT_QUOTES, 'UTF-8'); ?>
+                </label>
+                <input type="text"
+                       id="s-smtp-host"
+                       name="smtpHost"
+                       value="<?php echo htmlspecialchars($smtpHost, ENT_QUOTES, 'UTF-8'); ?>"
+                       maxlength="255"
+                       placeholder="smtp.example.com">
+            </div>
+
+            <div class="blc-setting blc-setting--smtp" <?php echo $smtpEnabled ? '' : 'style="display:none;"'; ?>>
+                <label class="blc-setting__label" for="s-smtp-port">
+                    <?php echo htmlspecialchars($plugin->t('setting_smtp_port'), ENT_QUOTES, 'UTF-8'); ?>
+                </label>
+                <input type="number"
+                       id="s-smtp-port"
+                       name="smtpPort"
+                       value="<?php echo $smtpPort; ?>"
+                       min="1" max="65535">
+            </div>
+
+            <div class="blc-setting blc-setting--smtp" <?php echo $smtpEnabled ? '' : 'style="display:none;"'; ?>>
+                <label class="blc-setting__label" for="s-smtp-encryption">
+                    <?php echo htmlspecialchars($plugin->t('setting_smtp_encryption'), ENT_QUOTES, 'UTF-8'); ?>
+                </label>
+                <select id="s-smtp-encryption" name="smtpEncryption">
+                    <option value="none" <?php echo $smtpEncryption === 'none' ? 'selected' : ''; ?>>
+                        <?php echo htmlspecialchars($plugin->t('setting_smtp_encryption_none'), ENT_QUOTES, 'UTF-8'); ?>
+                    </option>
+                    <option value="tls" <?php echo $smtpEncryption === 'tls' ? 'selected' : ''; ?>>
+                        <?php echo htmlspecialchars($plugin->t('setting_smtp_encryption_tls'), ENT_QUOTES, 'UTF-8'); ?>
+                    </option>
+                    <option value="ssl" <?php echo $smtpEncryption === 'ssl' ? 'selected' : ''; ?>>
+                        <?php echo htmlspecialchars($plugin->t('setting_smtp_encryption_ssl'), ENT_QUOTES, 'UTF-8'); ?>
+                    </option>
+                </select>
+            </div>
+
+            <div class="blc-setting blc-setting--smtp" <?php echo $smtpEnabled ? '' : 'style="display:none;"'; ?>>
+                <label class="blc-setting__label">
+                    <input type="hidden" name="smtpAuth" value="0">
+                    <input type="checkbox"
+                           name="smtpAuth"
+                           value="1"
+                           <?php echo $smtpAuth ? 'checked' : ''; ?>>
+                    <?php echo htmlspecialchars($plugin->t('setting_smtp_auth'), ENT_QUOTES, 'UTF-8'); ?>
+                </label>
+            </div>
+
+            <div class="blc-setting blc-setting--smtp blc-setting--smtp-auth" <?php echo ($smtpEnabled && $smtpAuth) ? '' : 'style="display:none;"'; ?>>
+                <label class="blc-setting__label" for="s-smtp-username">
+                    <?php echo htmlspecialchars($plugin->t('setting_smtp_username'), ENT_QUOTES, 'UTF-8'); ?>
+                </label>
+                <input type="text"
+                       id="s-smtp-username"
+                       name="smtpUsername"
+                       value="<?php echo htmlspecialchars($smtpUsername, ENT_QUOTES, 'UTF-8'); ?>"
+                       maxlength="255"
+                       autocomplete="off">
+            </div>
+
+            <div class="blc-setting blc-setting--smtp blc-setting--smtp-auth" <?php echo ($smtpEnabled && $smtpAuth) ? '' : 'style="display:none;"'; ?>>
+                <label class="blc-setting__label" for="s-smtp-password">
+                    <?php echo htmlspecialchars($plugin->t('setting_smtp_password'), ENT_QUOTES, 'UTF-8'); ?>
+                </label>
+                <input type="password"
+                       id="s-smtp-password"
+                       name="smtpPassword"
+                       value="<?php echo htmlspecialchars($smtpPassword, ENT_QUOTES, 'UTF-8'); ?>"
+                       maxlength="255"
+                       autocomplete="new-password">
+            </div>
+
+            <div class="blc-setting blc-setting--smtp" <?php echo $smtpEnabled ? '' : 'style="display:none;"'; ?>>
+                <label class="blc-setting__label" for="s-smtp-from-email">
+                    <?php echo htmlspecialchars($plugin->t('setting_smtp_from_email'), ENT_QUOTES, 'UTF-8'); ?>
+                </label>
+                <input type="email"
+                       id="s-smtp-from-email"
+                       name="smtpFromEmail"
+                       value="<?php echo htmlspecialchars($smtpFromEmail, ENT_QUOTES, 'UTF-8'); ?>"
+                       maxlength="255"
+                       placeholder="noreply@example.com">
+            </div>
+
+            <div class="blc-setting blc-setting--smtp" <?php echo $smtpEnabled ? '' : 'style="display:none;"'; ?>>
+                <label class="blc-setting__label" for="s-smtp-from-name">
+                    <?php echo htmlspecialchars($plugin->t('setting_smtp_from_name'), ENT_QUOTES, 'UTF-8'); ?>
+                </label>
+                <input type="text"
+                       id="s-smtp-from-name"
+                       name="smtpFromName"
+                       value="<?php echo htmlspecialchars($smtpFromName, ENT_QUOTES, 'UTF-8'); ?>"
+                       maxlength="255"
+                       placeholder="Website">
+            </div>
+
+            <div class="blc-setting blc-setting--smtp" <?php echo $smtpEnabled ? '' : 'style="display:none;"'; ?>>
+                <button type="button" id="blc-smtp-test-btn" class="blc-btn blc-btn--approve btn-w100">
+                    <?php echo htmlspecialchars($plugin->t('setting_smtp_test_button'), ENT_QUOTES, 'UTF-8'); ?>
+                </button>
+                <p id="blc-smtp-test-result" class="blc-setting__help" role="status" aria-live="polite"></p>
+            </div>
+
         </div>
 
         <p class="blc-settings-save-hint">
@@ -338,6 +457,32 @@
         var panel = document.getElementById('blc-tab-'+name);
         if (btn) { btn.classList.add('active'); btn.setAttribute('aria-selected','true'); }
         if (panel) panel.classList.add('active');
+    }
+
+    var smtpEnabledInput = document.querySelector('input[name="smtpEnabled"][type="checkbox"]');
+    var smtpAuthInput = document.querySelector('input[name="smtpAuth"][type="checkbox"]');
+    var smtpSettingBlocks = document.querySelectorAll('.blc-setting--smtp');
+
+    function blcToggleSmtpSettings() {
+        if (!smtpEnabledInput || !smtpSettingBlocks.length) {
+            return;
+        }
+        var smtpEnabled = smtpEnabledInput.checked;
+        var smtpAuthEnabled = smtpAuthInput ? smtpAuthInput.checked : false;
+
+        smtpSettingBlocks.forEach(function(block){
+            var requiresAuth = block.classList.contains('blc-setting--smtp-auth');
+            var shouldDisplay = smtpEnabled && (!requiresAuth || smtpAuthEnabled);
+            block.style.display = shouldDisplay ? '' : 'none';
+        });
+    }
+
+    if (smtpEnabledInput && smtpSettingBlocks.length) {
+        smtpEnabledInput.addEventListener('change', blcToggleSmtpSettings);
+        if (smtpAuthInput) {
+            smtpAuthInput.addEventListener('change', blcToggleSmtpSettings);
+        }
+        blcToggleSmtpSettings();
     }
 })();
 </script>
