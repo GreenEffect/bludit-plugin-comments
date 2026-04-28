@@ -6,7 +6,7 @@
  * @author   Green Effect
  * @contact  contact@green-effect.fr
  * @website  https://www.green-effect.fr
- * @version  1.2.1
+ * @version  1.3.0
  * @license  CC BY-SA 4.0
  */
 

@@ -2,6 +2,22 @@
 
 Toutes les evolutions notables de ce plugin sont documentees ici.
 
+## 1.3.0 - 2026-04-28
+
+### Nouvelles fonctionnalites
+
+- Selection d'algorithmes ALTCHA dans les parametres (SHA-256, SHA-384, SHA-512).
+- Ordre d'affichage des commentaires configurable (ascendant/descendant).
+- Notifications email pour les reponses aux commentaires (necessite SMTP configure).
+- Badge unread sur le lien commentaires du menu principal indiquant le nombre de commentaires en attente.
+- Alerte optionnelle dans les parametres pour signaler la disponibilite d'une mise a jour.
+
+### Corrections
+
+- Corrige les chemins CSS/JS hardcodes en utilisant `$this->directoryName()` pour fiabiliser l'installation sur toutes les configurations Bludit.
+- Corrige la traduction des parametres pour la longueur min/max des caracteres.
+- Corrige le texte : le bouton de sauvegarde est au haut de la page, non au bas.
+
 ## 1.2.1 - 2026-04-17
 
 ### Corrections
