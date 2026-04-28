@@ -12,6 +12,8 @@ Feel free to open an issue or a pull request!
 - [x] Correct the translation in the settings for the minimum and maximum number of characters
 - [ ] Properly integrate the per-page comments toggle using `$site->customFields()` (current JS-based approach has a known conflict with other plugins)
 - [ ] Adjust comment block CSS (`margin` and `width: auto`) for better theme compatibility
+- [ ] Strengthens the protection of runtime parameter synchronization
+- [ ] Complete admin-side i18n by replacing remaining hardcoded French strings in JavaScript (confirmation prompt and pagination labels) with translation keys.
 
 ---
 
