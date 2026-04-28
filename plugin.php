@@ -191,6 +191,11 @@ class pluginComments extends Plugin {
         return (string) $value;
     }
 
+    private function getBoolSetting(string $key, bool $default): bool
+    {
+        return $this->getIntSetting($key, $default ? 1 : 0) === 1;
+    }
+
     private function syncRuntimeSettingsFromAdminPost(): void
     {
         if (!$this->adminIsLogged()) {
@@ -633,8 +638,8 @@ class pluginComments extends Plugin {
             return;
         }
 
-        $minLen = (int) $this->getValue('minCommentLength');
-        $maxLen = (int) $this->getValue('maxCommentLength');
+        $minLen = $this->getIntSetting('minCommentLength', 10);
+        $maxLen = $this->getIntSetting('maxCommentLength', 1000);
 
         if ($this->safeLength($content) < $minLen) {
             $this->setFlash('error', $this->t('flash_comment_too_short', ['min' => $minLen]));
@@ -648,7 +653,7 @@ class pluginComments extends Plugin {
             return;
         }
 
-        $requireApproval = (bool) $this->getValue('requireApproval');
+        $requireApproval = $this->getBoolSetting('requireApproval', true);
         $status          = $requireApproval ? 'pending' : 'approved';
 
         $comment = [
