@@ -26,7 +26,7 @@
         "admin_saved_ok": "Sauvegarde effectuée",
         "admin_saved_error": "Erreur",
         "admin_saved_network_error": "Erreur réseau",
-        "admin_save_hint": "Cliquez sur Save en bas de page pour enregistrer ces réglages.",
+        "admin_save_hint": "Cliquez sur Save en haut de page pour enregistrer ces réglages.",
         "setting_require_approval": "Modération avant publication",
         "setting_require_approval_help": "Les nouveaux commentaires nécessitent une validation.",
         "setting_min_comment_length": "Longueur minimale du commentaire",
