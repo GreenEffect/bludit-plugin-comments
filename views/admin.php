@@ -15,6 +15,14 @@
             <svg class="blc-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
             <?php echo htmlspecialchars($plugin->t('admin_title'), ENT_QUOTES, 'UTF-8'); ?>
         </h2>
+        <?php if (!empty($updateAvailable)): ?>
+        <a class="blc-update-notice"
+           href="https://github.com/GreenEffect/bludit-plugin-comments/releases"
+           target="_blank"
+           rel="noopener noreferrer">
+            <?php echo htmlspecialchars($plugin->t('admin_update_available', ['version' => $latestVersion]), ENT_QUOTES, 'UTF-8'); ?>
+        </a>
+        <?php endif; ?>
         <div class="blc-stats-bar">
             <span class="blc-stat blc-stat--pending">
                 <strong><?php echo $totalPending; ?></strong> <?php echo htmlspecialchars($plugin->t('admin_stat_pending'), ENT_QUOTES, 'UTF-8'); ?>
@@ -313,6 +321,18 @@
                        value="<?php echo $commentsPerPage; ?>"
                        min="1" max="100">
                 <p class="blc-setting__help"><?php echo htmlspecialchars($plugin->t('setting_comments_per_page_help'), ENT_QUOTES, 'UTF-8'); ?></p>
+            </div>
+
+            <div class="blc-setting">
+                <label class="blc-setting__label">
+                    <input type="hidden" name="checkForUpdates" value="0">
+                    <input type="checkbox"
+                           name="checkForUpdates"
+                           value="1"
+                           <?php echo $checkForUpdates ? 'checked' : ''; ?>>
+                    <?php echo htmlspecialchars($plugin->t('setting_check_for_updates'), ENT_QUOTES, 'UTF-8'); ?>
+                </label>
+                <p class="blc-setting__help"><?php echo htmlspecialchars($plugin->t('setting_check_for_updates_help'), ENT_QUOTES, 'UTF-8'); ?></p>
             </div>
 
             <div class="blc-setting">

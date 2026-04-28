@@ -241,6 +241,7 @@ class pluginComments extends Plugin {
             'smtpPassword'     => '',
             'smtpFromEmail'    => '',
             'smtpFromName'     => '',
+            'checkForUpdates'  => 0,
         ];
 
         // Endpoint de challenge ALTCHA (standalone, servi par le plugin)
@@ -646,6 +647,70 @@ class pluginComments extends Plugin {
         }
         $decoded = base64_decode($normalized, true);
         return $decoded === false ? '' : $decoded;
+    }
+
+    // ──────────────────────────────────────────────
+    //  VÉRIFICATION DE VERSION
+    // ──────────────────────────────────────────────
+
+    private function getLocalVersion(): string
+    {
+        $file = __DIR__ . DS . 'VERSION';
+        if (!file_exists($file)) {
+            return '0.0.0';
+        }
+        return trim((string) file_get_contents($file));
+    }
+
+    private function fetchRemoteVersion(): string
+    {
+        $cacheFile = $this->commentsBasePath() . 'version-cache.json';
+        $cacheTtl  = 86400; // 24h
+
+        if (file_exists($cacheFile)) {
+            $cache = json_decode((string) file_get_contents($cacheFile), true);
+            if (
+                is_array($cache)
+                && isset($cache['version'], $cache['checked_at'])
+                && (time() - (int) $cache['checked_at']) < $cacheTtl
+            ) {
+                return (string) $cache['version'];
+            }
+        }
+
+        $url = 'https://raw.githubusercontent.com/GreenEffect/bludit-plugin-comments/main/VERSION';
+        $ctx = stream_context_create([
+            'http' => [
+                'timeout'         => 5,
+                'user_agent'      => 'bl-plugin-comments-update-check/1.0',
+                'follow_location' => 1,
+            ],
+            'ssl' => [
+                'verify_peer'      => true,
+                'verify_peer_name' => true,
+            ],
+        ]);
+
+        $remote = @file_get_contents($url, false, $ctx);
+        if ($remote === false || trim($remote) === '') {
+            return '';
+        }
+
+        $version = trim($remote);
+        @file_put_contents(
+            $cacheFile,
+            json_encode(['version' => $version, 'checked_at' => time()])
+        );
+
+        return $version;
+    }
+
+    private function isNewerVersion(string $remote, string $local): bool
+    {
+        if ($remote === '' || $local === '') {
+            return false;
+        }
+        return version_compare($remote, $local, '>');
     }
 
     private function getAltchaSecret(): string
@@ -1502,6 +1567,14 @@ class pluginComments extends Plugin {
         $smtpPassword     = (string) $this->getValue('smtpPassword');
         $smtpFromEmail    = (string) $this->getValue('smtpFromEmail');
         $smtpFromName     = (string) $this->getValue('smtpFromName');
+        $checkForUpdates  = (bool)   $this->getValue('checkForUpdates');
+
+        $updateAvailable = false;
+        $latestVersion   = '';
+        if ($checkForUpdates) {
+            $latestVersion   = $this->fetchRemoteVersion();
+            $updateAvailable = $this->isNewerVersion($latestVersion, $this->getLocalVersion());
+        }
 
         $plugin = $this;
 
