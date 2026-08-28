@@ -30,6 +30,8 @@
         "admin_save_hint": "Click Save at the top of the page to save these settings.",
         "setting_require_approval": "Moderation before publishing",
         "setting_require_approval_help": "New comments require validation.",
+        "setting_default_enabled": "Comments enabled by default",
+        "setting_default_enabled_help": "New pages start with comments switched on. Pages that were never toggled follow this setting too.",
         "setting_min_comment_length": "Minimum comment length",
         "setting_max_comment_length": "Maximum comment length",
         "setting_min_char_length": "Minimum number of characters.",

@@ -371,13 +371,27 @@
      ÉDITEUR DE PAGE — panneau comments toggle
   ══════════════════════════════════════════════════ */
   var editorPanel = document.getElementById('blc-editor-panel');
+  var editorForm  = document.getElementById('jsform');
+
   if (editorPanel) {
     editorPanel.style.display = '';
 
-    // Chercher la sidebar de l'éditeur Bludit (Bootstrap col)
-    var sidebar = document.querySelector('.col-md-3, .col-sm-4, #panel-right, .card-settings');
-    if (sidebar) {
-      sidebar.appendChild(editorPanel);
+    // Bludit 4's editor puts its per-page options in #jseditorSidebar, a
+    // slide-out with General / Advanced / SEO tabs. The comments toggle is a
+    // per-page publishing option, so it belongs at the end of General next to
+    // Category and Cover image.
+    //
+    // Upstream looked for '.col-md-3, .col-sm-4, #panel-right, .card-settings'.
+    // None of those exist in Bludit 4, so the floating fallback below was in
+    // fact the only branch that ever ran — the panel sat over the text area on
+    // every install.
+    var mount = document.querySelector('#jseditorSidebar #nav-general')
+             || document.querySelector('#jseditorSidebar .tab-content')
+             || document.querySelector('.col-md-3, .col-sm-4, #panel-right, .card-settings');
+
+    if (mount) {
+      editorPanel.classList.add('blc-editor-panel--docked');
+      mount.appendChild(editorPanel);
     } else {
       // Fallback : widget flottant
       Object.assign(editorPanel.style, {
@@ -394,55 +408,32 @@
   }
 
   var editorToggle = document.getElementById('blc-page-comments-toggle');
-  if (editorToggle) {
-    editorToggle.addEventListener('change', function () {
-      var pageKey = this.dataset.pageKey;
-      var enabled = this.checked;
-      var toggleInput = this;
+  if (editorToggle && editorPanel && editorForm) {
+    // The flag rides along in the page form instead of being POSTed on its
+    // own. On new-content there is no page key to POST to yet, which is why
+    // the separate request could never make the setting stick; here the
+    // server learns the key from afterPageCreate/afterPageModify.
+    var fieldName = editorPanel.dataset.fieldName || 'blcCommentsEnabled';
+    var hidden = editorForm.querySelector('input[name="' + fieldName + '"]');
+    if (!hidden) {
+      hidden = document.createElement('input');
+      hidden.type = 'hidden';
+      hidden.name = fieldName;
+      // Appended to the form rather than to the panel, so the flag posts
+      // regardless of where the panel was mounted.
+      editorForm.appendChild(hidden);
+    }
 
-      var label   = document.getElementById('blc-editor-toggle-label');
-      var saving  = document.getElementById('blc-editor-saving');
+    var syncHiddenField = function () {
+      var enabled = editorToggle.checked;
+      hidden.value = enabled ? '1' : '0';
 
+      var label = document.getElementById('blc-editor-toggle-label');
       if (label) label.textContent = enabled ? I18N.enabled : I18N.disabled;
+    };
 
-      var fd = new FormData();
-      fd.append('bl_toggle_comments', '1');
-      fd.append('page_key', pageKey);
-      fd.append('enabled',  enabled ? '1' : '0');
-      fd.append('csrf_token', csrfToken);
-
-      fetch(window.location.href, {
-        method:  'POST',
-        body:    fd,
-        headers: { 'X-Requested-With': 'XMLHttpRequest' }
-      })
-      .then(function (r) {
-        if (!r.ok) {
-          throw new Error('HTTP ' + r.status);
-        }
-        return r.json();
-      })
-      .then(function (data) {
-        if (!data.ok) {
-          toggleInput.checked = !enabled;
-          if (label) label.textContent = !enabled ? I18N.enabled : I18N.disabled;
-        }
-        if (saving) {
-          saving.textContent = data.ok ? I18N.savingOk : I18N.savingError;
-          saving.classList.add('visible');
-          setTimeout(function () { saving.classList.remove('visible'); }, 2200);
-        }
-      })
-      .catch(function () {
-        toggleInput.checked = !enabled;
-        if (label) label.textContent = !enabled ? I18N.enabled : I18N.disabled;
-        if (saving) {
-          saving.textContent = I18N.savingNetworkError;
-          saving.classList.add('visible');
-          setTimeout(function () { saving.classList.remove('visible'); }, 2200);
-        }
-      });
-    });
+    syncHiddenField();
+    editorToggle.addEventListener('change', syncHiddenField);
   }
 
 })();

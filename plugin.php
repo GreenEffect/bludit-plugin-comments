@@ -11,6 +11,13 @@
  */
 
 class pluginComments extends Plugin {
+    /**
+     * Name of the hidden input the editor panel adds to Bludit's page form.
+     * The flag travels with the page POST so it is saved by the same request
+     * that saves the page, under the key the core actually assigned.
+     */
+    const EDITOR_FIELD = 'blcCommentsEnabled';
+
     private $frontCommentsRendered = false;
     private $cachedTranslations = null;
 
@@ -202,7 +209,7 @@ class pluginComments extends Plugin {
             return;
         }
 
-        $settingsKeys = ['requireApproval', 'commentsPerPage', 'minCommentLength', 'maxCommentLength', 'rateLimitSeconds', 'commentOrder', 'altchaAlgorithm'];
+        $settingsKeys = ['requireApproval', 'commentsPerPage', 'minCommentLength', 'maxCommentLength', 'rateLimitSeconds', 'commentOrder', 'defaultEnabled', 'altchaAlgorithm'];
         $hasSettingsPost = false;
         foreach ($settingsKeys as $k) {
             if (array_key_exists($k, $_POST)) {
@@ -220,6 +227,7 @@ class pluginComments extends Plugin {
 
         // Checkbox non soumis => valeur false explicite
         $current['requireApproval']  = !empty($_POST['requireApproval']) ? 1 : 0;
+        $current['defaultEnabled']   = !empty($_POST['defaultEnabled']) ? 1 : 0;
         $current['commentsPerPage']  = max(1, (int) ($_POST['commentsPerPage'] ?? 10));
         $current['minCommentLength'] = max(1, (int) ($_POST['minCommentLength'] ?? 10));
         $current['maxCommentLength'] = max(1, (int) ($_POST['maxCommentLength'] ?? 1000));
@@ -257,6 +265,7 @@ class pluginComments extends Plugin {
             'maxCommentLength' => 1000,
             'rateLimitSeconds' => 300,
             'commentOrder'      => 'desc',
+            'defaultEnabled'   => 1,
             'altchaAlgorithm'  => 'SHA-256',
             'altchaSecret'     => '',
             'smtpEnabled'      => 0,
@@ -455,7 +464,17 @@ class pluginComments extends Plugin {
     {
         $pageKey = $this->cleanKey($pageKey);
         $s = $this->loadPageSettings();
-        return isset($s[$pageKey]['enabled']) ? (bool) $s[$pageKey]['enabled'] : false;
+        // A page that was never toggled has no entry at all. Falling back to
+        // the configured default is what makes "comments on by default" work
+        // for content that predates the setting as well as for new content.
+        return isset($s[$pageKey]['enabled'])
+            ? (bool) $s[$pageKey]['enabled']
+            : $this->defaultCommentsEnabled();
+    }
+
+    public function defaultCommentsEnabled(): bool
+    {
+        return $this->getBoolSetting('defaultEnabled', true);
     }
 
     private function setPageCommentsEnabled(string $pageKey, bool $enabled): void
@@ -1561,6 +1580,7 @@ class pluginComments extends Plugin {
         $base     = $this->commentsBasePath();
         $settings = $this->loadPageSettings();
         $allPages = $this->getBluditPages();
+        $default  = $this->defaultCommentsEnabled();
 
         if (is_dir($base)) {
             foreach (scandir($base) as $entry) {
@@ -1576,7 +1596,7 @@ class pluginComments extends Plugin {
                     'title'    => $allPages[$entry]['title'] ?? $entry,
                     'pending'  => $this->loadComments($entry, 'pending'),
                     'approved' => $this->loadComments($entry, 'approved'),
-                    'enabled'  => isset($settings[$entry]['enabled']) ? (bool) $settings[$entry]['enabled'] : false,
+                    'enabled'  => isset($settings[$entry]['enabled']) ? (bool) $settings[$entry]['enabled'] : $default,
                 ];
             }
         }
@@ -1589,7 +1609,7 @@ class pluginComments extends Plugin {
                     'title'    => $allPages[$key]['title'] ?? $key,
                     'pending'  => [],
                     'approved' => [],
-                    'enabled'  => (bool) ($cfg['enabled'] ?? false),
+                    'enabled'  => isset($cfg['enabled']) ? (bool) $cfg['enabled'] : $default,
                 ];
             }
         }
@@ -1678,17 +1698,44 @@ class pluginComments extends Plugin {
              . '<script src="' . $jsUrl . '" defer></script>' . "\n";
     }
 
-    public function adminBodyBegin(): string
+    /**
+     * The page key of the editor currently being rendered.
+     *
+     * Returns '' on new-content (there is no key yet) and null when the
+     * request is not an editor view at all. The distinction matters: '' means
+     * "an editor, but for a page that does not exist yet".
+     *
+     * A regex of ([^\/?\s]+) would capture only the first segment, so
+     * edit-content/parent/child yielded 'parent' while the real key is
+     * 'parent/child'. Everything after the marker up to a query string or
+     * fragment is the key.
+     */
+    private function editorPageKey(): ?string
     {
         $uri = $_SERVER['REQUEST_URI'] ?? '';
+        $uri = explode('#', explode('?', $uri, 2)[0], 2)[0];
 
-        // Détecter l'éditeur de page
-        if (!preg_match('/(new-content|edit-content)(\/([^\/?\s]+))?/', $uri, $m)) {
+        if (preg_match('#/new-content/?$#', $uri)) {
+            return '';
+        }
+        if (preg_match('#/edit-content/(.+)$#', $uri, $m)) {
+            return trim(rawurldecode($m[1]), '/');
+        }
+        return null;
+    }
+
+    public function adminBodyBegin(): string
+    {
+        $pageKey = $this->editorPageKey();
+        if ($pageKey === null) {
             return '';
         }
 
-        $pageKey   = $m[3] ?? '';
-        $isEnabled = $pageKey ? $this->isCommentsEnabled($pageKey) : false;
+        // A page that does not exist yet has no stored setting, so it starts
+        // from the configured default rather than from "off".
+        $isEnabled = $pageKey === ''
+            ? $this->defaultCommentsEnabled()
+            : $this->isCommentsEnabled($pageKey);
         $csrfToken = $this->csrfToken();
         $ajaxBase  = HTML_PATH_ROOT;
         $plugin    = $this;
@@ -1696,6 +1743,39 @@ class pluginComments extends Plugin {
         ob_start();
         include __DIR__ . '/views/page-editor-panel.php';
         return ob_get_clean();
+    }
+
+    /**
+     * Persist the editor's comments toggle, for both create and modify.
+     *
+     * Upstream posted the flag separately over AJAX, keyed off the request
+     * URI. On new-content there is no key in the URI yet, so the flag was
+     * written under '' and orphaned the moment the page was saved under its
+     * real key — the "I have to turn it on again after every save" symptom.
+     * Here the flag rides along in the page form and is written once the core
+     * has told us the key it actually used.
+     *
+     * $key defaults to null because bl-kernel/boot/rules/69.pages.php:41 calls
+     * afterPageCreate with no arguments when the scheduler publishes a page.
+     */
+    public function afterPageCreate($key = null)
+    {
+        $this->storePostedCommentsFlag($key);
+    }
+
+    public function afterPageModify($key = null)
+    {
+        $this->storePostedCommentsFlag($key);
+    }
+
+    private function storePostedCommentsFlag($key): void
+    {
+        // Absent field means the request did not come from the editor form
+        // (the scheduler, the API, another plugin) — leave the setting alone.
+        if ($key === null || $key === '' || !isset($_POST[self::EDITOR_FIELD])) {
+            return;
+        }
+        $this->setPageCommentsEnabled((string) $key, $_POST[self::EDITOR_FIELD] === '1');
     }
 
     public function adminSidebar(): string
@@ -1736,6 +1816,7 @@ class pluginComments extends Plugin {
 
         // Récupération des valeurs de config
         $requireApproval  = (bool) $this->getValue('requireApproval');
+        $defaultEnabled   = $this->defaultCommentsEnabled();
         $commentsPerPage  = max(1, $this->getIntSetting('commentsPerPage', 10));
         $minCommentLength = (int)  $this->getValue('minCommentLength');
         $maxCommentLength = (int)  $this->getValue('maxCommentLength');

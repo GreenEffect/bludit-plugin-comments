@@ -273,6 +273,17 @@
             </div>
 
             <div class="blc-setting">
+                <label class="blc-setting__label">
+                    <input type="checkbox"
+                           name="defaultEnabled"
+                           value="1"
+                           <?php echo $defaultEnabled ? 'checked' : ''; ?>>
+                    <?php echo htmlspecialchars($plugin->t('setting_default_enabled'), ENT_QUOTES, 'UTF-8'); ?>
+                </label>
+                <p class="blc-setting__help"><?php echo htmlspecialchars($plugin->t('setting_default_enabled_help'), ENT_QUOTES, 'UTF-8'); ?></p>
+            </div>
+
+            <div class="blc-setting">
                 <label class="blc-setting__label" for="s-minlen">
                     <?php echo htmlspecialchars($plugin->t('setting_min_comment_length'), ENT_QUOTES, 'UTF-8'); ?>
                 </label>

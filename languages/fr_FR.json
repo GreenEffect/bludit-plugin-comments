@@ -30,6 +30,8 @@
         "admin_save_hint": "Cliquez sur Save en haut de page pour enregistrer ces réglages.",
         "setting_require_approval": "Modération avant publication",
         "setting_require_approval_help": "Les nouveaux commentaires nécessitent une validation.",
+        "setting_default_enabled": "Commentaires activés par défaut",
+        "setting_default_enabled_help": "Les nouvelles pages démarrent avec les commentaires activés. Les pages jamais basculées suivent également ce réglage.",
         "setting_min_comment_length": "Longueur minimale du commentaire",
         "setting_max_comment_length": "Longueur maximale du commentaire",
         "setting_min_char_length": "Nombre de caractères minimum.",

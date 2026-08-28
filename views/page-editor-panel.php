@@ -5,6 +5,7 @@
      data-page-key="<?php echo htmlspecialchars($pageKey, ENT_QUOTES, 'UTF-8'); ?>"
     data-csrf-token="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>"
      data-ajax-url="<?php echo htmlspecialchars($ajaxBase, ENT_QUOTES, 'UTF-8'); ?>"
+     data-field-name="<?php echo htmlspecialchars(pluginComments::EDITOR_FIELD, ENT_QUOTES, 'UTF-8'); ?>"
      style="display:none">
     <div class="blc-editor-panel__inner">
         <h6>
